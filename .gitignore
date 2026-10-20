@@ -1,0 +1,4 @@
+.build/
+.deps/
+Resources/Tools/
+.DS_Store
