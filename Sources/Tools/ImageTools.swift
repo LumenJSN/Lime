@@ -15,19 +15,19 @@ enum ImageTools {
         guard original >= 1000 else { throw LimeError("This file is under 1 KB already.") }
         if format == "webp", AnimatedImage.frameCount(source) > 1 {
             let target = options.targetBytes(original: original)
-            if let target, target < 1000 { throw LimeError("The goal size has to be 1 KB or more.") }
-            if let target, target >= original { throw LimeError("The goal has to be smaller than the file is now.") }
-            let output = context.output(for: source, label: "smaller", ext: format)
+            if let target, target < 1000 { throw LimeError("The target size has to be 1 KB or more.") }
+            if let target, target >= original { throw LimeError("The target has to be smaller than the file is now.") }
+            let output = context.output(for: source, label: "compressed", ext: format)
             return try await AnimatedImage.compressWebP(source, options: options, target: target, original: original, output: output, context: context)
         }
         var image = try ImageIOKit.load(source)
         if let cap = options.resizeCap.maxDimension { image = ImageIOKit.resized(image, maxDimension: cap) }
         var metadata = ImageIOKit.portableMetadata(source)
-        let output = context.output(for: source, label: "smaller", ext: format)
+        let output = context.output(for: source, label: "compressed", ext: format)
         let target = options.targetBytes(original: original)
         if let target {
-            guard target >= 1000 else { throw LimeError("The goal size has to be 1 KB or more.") }
-            guard target < original else { throw LimeError("The goal has to be smaller than the file is now.") }
+            guard target >= 1000 else { throw LimeError("The target size has to be 1 KB or more.") }
+            guard target < original else { throw LimeError("The target has to be smaller than the file is now.") }
         }
         let lossy = ["jpg", "heic", "webp", "avif"].contains(format)
         func encode(_ img: CGImage, quality: Double, to url: URL) async throws -> Int {
@@ -44,7 +44,7 @@ enum ImageTools {
         guard let target else {
             let quality = options.squashLevel == .gentle ? 0.72 : 0.48
             let size = try await encode(image, quality: quality, to: output)
-            if size >= original, options.resizeCap == .original { throw LimeError("Shrinking wouldn't make this file any smaller than it already is.") }
+            if size >= original, options.resizeCap == .original { throw LimeError("Compressing wouldn't make this file any smaller than it already is.") }
             return
         }
         // Target size: search quality, then shrink dimensions if needed.
@@ -113,19 +113,19 @@ enum ImageTools {
 
     static func edit(_ source: URL, options: ToolChoices, context: OperationContext) async throws {
         let image = try ImageIOKit.load(source)
-        try await save(ImageRendering.adjust(image, options.photoTweaks), source: source, label: "adjusted", context: context)
+        try await save(ImageRendering.adjust(image, options.photoTweaks), source: source, label: "edited", context: context)
     }
 
     static func annotate(_ source: URL, options: ToolChoices, context: OperationContext) async throws {
         guard !options.annotations.isEmpty else { throw LimeError("Draw something on the photo first.") }
         let image = try ImageIOKit.load(source)
-        try await save(try AnnotationRenderer.render(image, annotations: options.annotations), source: source, label: "marked up", format: "png", context: context)
+        try await save(try AnnotationRenderer.render(image, annotations: options.annotations), source: source, label: "annotated", format: "png", context: context)
     }
 
     static func frame(_ source: URL, options: ToolChoices, context: OperationContext) async throws {
         let image = try ImageIOKit.load(source)
         let format = outputFormat(source)
-        try await save(try FrameRenderer.render(image, options: options.backdropSettings), source: source, label: "backdrop", format: format, context: context)
+        try await save(try FrameRenderer.render(image, options: options.backdropSettings), source: source, label: "background", format: format, context: context)
     }
 
     static func crop(_ sources: [URL], options: ToolChoices, context: OperationContext) async throws {
@@ -145,7 +145,7 @@ enum ImageTools {
         let output = ImageRendering.redact(image, rects: options.redactions.map(\.rect), style: options.maskFill, color: options.maskColor)
         // Redacted copies never carry the original metadata.
         let ext = outputFormat(source)
-        let url = context.output(for: source, label: "masked", ext: ext)
+        let url = context.output(for: source, label: "redacted", ext: ext)
         try await ImageIOKit.write(output, to: url, format: ext, quality: 0.92, metadata: [:])
     }
 
@@ -153,7 +153,7 @@ enum ImageTools {
         let ordered = options.orderedFiles ?? sources
         let images = try ordered.map { try ImageIOKit.load($0, maxPixelSize: 3000) }
         let output = try CollageRenderer.render(images, options: options.collage)
-        let url = context.output(for: ordered[0], label: "mosaic", ext: "png")
+        let url = context.output(for: ordered[0], label: "collage", ext: "png")
         try await ImageIOKit.write(output, to: url, format: "png", quality: 1)
     }
 

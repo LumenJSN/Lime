@@ -168,7 +168,7 @@ struct RedactionOverlay: View {
                     drawing = nil
                 })
                 .onTapGesture { selected = nil }
-                .accessibilityLabel("Mask canvas. Draw boxes over what to hide.")
+                .accessibilityLabel("Redaction canvas. Draw boxes over what to hide.")
             ForEach(rects.filter(visible)) { item in
                 let v = view(item.rect)
                 Rectangle()
@@ -184,7 +184,7 @@ struct RedactionOverlay: View {
                         rects[index].rect.origin = CGPoint(x: min(max(0, s.minX + g.translation.width / frame.width), 1 - s.width),
                                                            y: min(max(0, s.minY + g.translation.height / frame.height), 1 - s.height))
                     }.onEnded { _ in moveStart = nil })
-                    .accessibilityLabel("Mask box")
+                    .accessibilityLabel("Redaction box")
                 if selected == item.id {
                     Circle().fill(Color(nsColor: Brand.accent)).frame(width: 12, height: 12).position(x: v.maxX, y: v.maxY)
                         .gesture(DragGesture().onChanged { g in
@@ -192,7 +192,7 @@ struct RedactionOverlay: View {
                             let p = toNormal(g.location)
                             rects[index].rect.size = CGSize(width: max(0.01, p.x - rects[index].rect.minX), height: max(0.01, p.y - rects[index].rect.minY))
                         })
-                        .accessibilityLabel("Resize mask")
+                        .accessibilityLabel("Resize redaction")
                 }
             }
             if let d = drawing {

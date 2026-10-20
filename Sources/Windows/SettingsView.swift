@@ -206,7 +206,7 @@ struct GeneralSettings: View {
             })).toggleStyle(.checkbox).frame(height: 37)
             Divider()
             Toggle("Click sound and trackpad tap", isOn: $settings.feedback).toggleStyle(.checkbox).frame(height: 37)
-            Toggle("Extra tools: Grab Text and Cut Out", isOn: $settings.extraTools).toggleStyle(.checkbox).frame(height: 37)
+            Toggle("Extra tools: Copy Text and Remove Background", isOn: $settings.extraTools).toggleStyle(.checkbox).frame(height: 37)
                 .help("Adds on-device text recognition and background removal after the standard tools.")
             Divider()
             Text("Drag Modifiers").font(.system(size: 11.5, weight: .semibold)).padding(.top, 12).padding(.bottom, 4)

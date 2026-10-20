@@ -183,16 +183,16 @@ struct FormatDetail: View {
     private var photoSquash: some View {
         VStack(alignment: .leading, spacing: 0) {
             Divider().padding(.vertical, 14)
-            Text("Photo Shrink").font(.system(size: 13, weight: .semibold)).padding(.bottom, 4)
+            Text("Image Compression").font(.system(size: 13, weight: .semibold)).padding(.bottom, 4)
             row("Strength") {
-                TintedSegments(title: "Strength", selection: $settings.photoSquashLevel, options: [(.gentle, "Gentle"), (.hard, "Hard")])
+                TintedSegments(title: "Strength", selection: $settings.photoSquashLevel, options: [(.gentle, "Balanced"), (.hard, "Strong")])
             }
             row("Image size") {
                 TintedPopup(title: "Image size", selection: $settings.resizeCap, options: ToolChoices.ResizeCap.allCases.map { ($0, $0.title) })
             }
             HStack {
                 Spacer()
-                TintedButton(title: "Reset Shrink Defaults") {
+                TintedButton(title: "Reset Compression") {
                     settings.photoSquashLevel = .gentle; settings.resizeCap = .original
                 }
             }.padding(.top, 6)
@@ -202,9 +202,9 @@ struct FormatDetail: View {
     private var videoSquash: some View {
         VStack(alignment: .leading, spacing: 0) {
             Divider().padding(.vertical, 14)
-            Text("Shrink Defaults").font(.system(size: 13, weight: .semibold)).padding(.bottom, 4)
+            Text("Compression").font(.system(size: 13, weight: .semibold)).padding(.bottom, 4)
             row("Strength") {
-                TintedSegments(title: "Strength", selection: $settings.videoSquashLevel, options: [(.gentle, "Gentle"), (.hard, "Hard")])
+                TintedSegments(title: "Strength", selection: $settings.videoSquashLevel, options: [(.gentle, "Balanced"), (.hard, "Strong")])
             }
             note(settings.videoSquashLevel == .gentle ? "Looks close to the source and still saves space." : "Far smaller, with quality loss you may notice.")
         }

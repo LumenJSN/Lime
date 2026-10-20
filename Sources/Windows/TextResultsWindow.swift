@@ -58,7 +58,7 @@ struct TextResultsView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "text.viewfinder").font(.system(size: 18, weight: .medium)).foregroundStyle(Color(nsColor: Brand.accent))
-                Text("Grab Text").font(.system(size: 14, weight: .semibold))
+                Text("Copy Text").font(.system(size: 14, weight: .semibold))
                 Spacer()
                 if let status = model.status { Text(status).font(.system(size: 11)).foregroundStyle(.secondary) }
             }
@@ -106,7 +106,7 @@ enum TextResultsWindow {
         window.isReleasedWhenClosed = false
         window.level = .floating
         window.contentView = host
-        window.title = "Grab Text"
+        window.title = "Copy Text"
         return window
     }
 }

@@ -7,12 +7,12 @@ enum PDFTools {
     static func compress(_ source: URL, options: ToolChoices, context: OperationContext) async throws {
         let document = try PDFConverter.open(source)
         let original = ImageTools.fileSize(source)
-        let output = context.output(for: source, label: "smaller", ext: "pdf")
+        let output = context.output(for: source, label: "compressed", ext: "pdf")
         let target = options.targetBytes(original: original)
         // Balanced: the macOS Reduce File Size filter; Strong or a target: re-rasterise pages.
         if target == nil, options.squashLevel == .gentle {
             guard let filter = QuartzFilter(url: URL(fileURLWithPath: "/System/Library/Filters/Reduce File Size.qfilter")) else {
-                throw LimeError("macOS's PDF shrink filter is missing on this Mac.")
+                throw LimeError("macOS's PDF compression filter is missing on this Mac.")
             }
             guard document.write(to: output, withOptions: [PDFDocumentWriteOption(rawValue: "QuartzFilter"): filter]) else {
                 throw LimeError("Lime couldn't write the smaller PDF.")
@@ -27,7 +27,7 @@ enum PDFTools {
             }
         }
         guard let check = PDFDocument(url: output), check.pageCount == document.pageCount else { throw LimeError("The smaller PDF failed its check.") }
-        if ImageTools.fileSize(output) >= original { throw LimeError("Shrinking wouldn't make this file any smaller than it already is.") }
+        if ImageTools.fileSize(output) >= original { throw LimeError("Compressing wouldn't make this file any smaller than it already is.") }
     }
 
     private static func rasterize(_ document: PDFDocument, to url: URL, dpi: Double, quality: Double, context: OperationContext) throws {
@@ -106,7 +106,7 @@ enum PDFTools {
                 page.setBounds(grown, for: .mediaBox); page.setBounds(grown, for: .cropBox)
             }
         }
-        let url = context.output(for: source, label: "reordered", ext: "pdf")
+        let url = context.output(for: source, label: "organized", ext: "pdf")
         guard output.write(to: url), PDFDocument(url: url)?.pageCount == order.count else { throw LimeError("The rearranged PDF failed its check.") }
     }
 }

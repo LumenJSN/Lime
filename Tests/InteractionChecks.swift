@@ -17,7 +17,7 @@ enum InteractionChecks {
         expect(LimeTool.allCases.filter { !$0.isExtra }.count == 27, "27 core tools")
         expect(LimeTool.allCases.filter(\.isExtra) == [.copyText, .removeBackground], "two extra tools")
         expect(WheelCatalog.items(for: [URL(fileURLWithPath: "/a.jpg")], mode: .tools).count == 7, "extras hidden unless enabled")
-        expect(WheelCatalog.items(for: [URL(fileURLWithPath: "/a.pdf")], mode: .tools, extras: true).last?.title == "GRAB TEXT", "extras follow the core tools")
+        expect(WheelCatalog.items(for: [URL(fileURLWithPath: "/a.pdf")], mode: .tools, extras: true).last?.title == "COPY TEXT", "extras follow the core tools")
         expect(MarkdownRenderer.inline("*기울임*과").contains("<em>기울임</em>"), "intraword * emphasis")
         do {
             var doc = SemanticDocument()
@@ -137,7 +137,7 @@ expect(!MarkdownRenderer.inline("![a](%2e%2e/secret.png)").contains("<img") && !
         expect(controller.model.presented, "a stale drag-end timer does not close a newer wheel")
         controller.show(files: [wav], mode: .convert, at: .zero)
         controller.setMode(.tools)
-        expect(controller.model.items.map(\.title).first == "CUT", "mode switch to tools")
+        expect(controller.model.items.map(\.title).first == "TRIM", "mode switch to tools")
         controller.setMode(.actions)
         expect(controller.model.items.count == 6, "actions wheel")
         controller.step(1)

@@ -11,12 +11,12 @@ enum BackgroundRemoval {
     }
 
     static func run(_ source: URL, context: OperationContext) async throws {
-        guard #available(macOS 14, *) else { throw LimeError("Cut Out needs macOS 14 or newer.") }
+        guard #available(macOS 14, *) else { throw LimeError("Remove Background needs macOS 14 or newer.") }
         let image = try ImageIOKit.load(source)
         context.progress(0.2)
         let cutout = try cutout(image)
         context.progress(0.8)
-        let output = context.output(for: source, label: "cutout", ext: "png")
+        let output = context.output(for: source, label: "no background", ext: "png")
         try await ImageIOKit.write(cutout, to: output, format: "png", quality: 1, pngLevel: 9)
     }
 

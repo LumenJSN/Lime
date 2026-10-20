@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 /// Shared state for one tool window (`FileToolOptionsModel`).
@@ -24,21 +25,21 @@ final class ToolEditorModel: ObservableObject {
     /// Title of each window's main button.
     var applyTitle: String {
         switch tool {
-        case .compress: "Shrink"
+        case .compress: "Compress"
         case .stripTags: "Save"
-        case .adjustPhoto: "Save Adjusted Copy"
-        case .markUpPhoto: "Save Marked-Up Copy"
-        case .addBackdrop: "Save with Backdrop"
-        case .maskPhoto, .maskVideo: "Save Masked Copy"
-        case .censorAudio: "Save Censored Copy"
-        case .levelAudio: "Level"
-        case .arrangePages: "Save Rearranged PDF"
-        case .combinePDFs: "Combine"
-        case .stitchVideos: "Stitch"
-        case .grabFrames: options.frameGrabTimes.count == 1 ? "Save 1 Still" : "Save \(options.frameGrabTimes.count) Stills"
-        case .sliceVideo: options.clipExport == .merged && !options.droppedSlices.isEmpty ? "Save as One Clip" : "Save Slices"
-        case .waveVideo: "Make Video"
-        case .makeMosaic: "Build Mosaic"
+        case .adjustPhoto: "Save Copy"
+        case .markUpPhoto: "Save Copy"
+        case .addBackdrop: "Save Copy"
+        case .maskPhoto, .maskVideo: "Save Copy"
+        case .censorAudio: "Save Copy"
+        case .levelAudio: "Normalize"
+        case .arrangePages: "Save PDF"
+        case .combinePDFs: "Merge"
+        case .stitchVideos: "Join"
+        case .grabFrames: options.frameGrabTimes.count == 1 ? "Save 1 Snapshot" : "Save \(options.frameGrabTimes.count) Snapshots"
+        case .sliceVideo: options.clipExport == .merged && !options.droppedSlices.isEmpty ? "Export as One Video" : "Split Video"
+        case .waveVideo: "Create Video"
+        case .makeMosaic: "Create Collage"
         default: "Apply"
         }
     }
@@ -49,7 +50,7 @@ final class ToolEditorModel: ObservableObject {
         switch tool {
         case .markUpPhoto: return "Draw something on the photo first."
         case .maskPhoto: return "Draw a box over what should be hidden."
-        case .censorAudio: return "Mark at least one part to censor."
+        case .censorAudio: return "Mark at least one part to bleep."
         case .grabFrames: return "Add at least one frame."
         default: return nil
         }
@@ -65,6 +66,7 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
     let model: ToolEditorModel
     private var window: NSWindow?
     private let apply: (ToolChoices, NSPoint) -> Void
+    private var modeWatch: AnyCancellable?
     var onClose: (() -> Void)?
 
     init(tool: LimeTool, files: [URL], settings: AppSettings, apply: @escaping (ToolChoices, NSPoint) -> Void) {
@@ -74,9 +76,11 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
 
     func show(near point: NSPoint) {
         let root = ToolWindowContent(model: model, apply: { [weak self] in self?.commit() }, cancel: { [weak self] in self?.window?.close() })
-        let size = Self.size(for: model.tool)
-        // Native windows keep a fixed size; content never resizes them.
-        let host = FirstMouseHostingView(rootView: root.frame(width: size.width, height: size.height))
+        var size = Self.size(for: model.tool)
+        let fits = Self.fitsContent(model.tool)
+        if fits { size.height = Self.contentHeight(model: model, width: size.width) }
+        // Windows keep the size set here; content never resizes them on its own.
+        let host = FirstMouseHostingView(rootView: root.frame(width: size.width).frame(maxHeight: .infinity))
         host.sizingOptions = []
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
         window.titlebarAppearsTransparent = true
@@ -95,8 +99,34 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
             window.setFrameOrigin(origin)
         } else { window.center() }
         self.window = window
+        if fits {
+            modeWatch = model.$options.map(\.sizeGoal).removeDuplicates().dropFirst()
+                .sink { [weak self] _ in DispatchQueue.main.async { self?.fitHeight() } }
+        }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Tools whose window height follows their controls, so the apply button
+    /// sits right under them.
+    static func fitsContent(_ tool: LimeTool) -> Bool { tool == .compress }
+
+    /// Height the whole window content needs at `width`.
+    static func contentHeight(model: ToolEditorModel, width: CGFloat) -> CGFloat {
+        let probe = NSHostingView(rootView: ToolWindowContent(model: model, apply: {}, cancel: {})
+            .frame(width: width).fixedSize(horizontal: false, vertical: true))
+        return ceil(probe.fittingSize.height)
+    }
+
+    /// Resizes the window to its content, keeping the title bar in place.
+    private func fitHeight() {
+        guard let window else { return }
+        let width = window.contentRect(forFrameRect: window.frame).width
+        let target = window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: width, height: Self.contentHeight(model: model, width: width)))
+        var frame = window.frame
+        frame.origin.y = frame.maxY - target.height
+        frame.size.height = target.height
+        if frame != window.frame { window.setFrame(frame, display: true, animate: true) }
     }
 
     /// Window size per tool, roomy enough for its controls.
@@ -375,7 +405,7 @@ struct InlineSlider: View {
     }
 }
 
-/// Small section title inside an editor ("Light", "Masks").
+/// Small section title inside an editor ("Light", "Redactions").
 struct EditorSectionTitle: View {
     let title: String
     var body: some View { Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).padding(.top, 6) }

@@ -62,7 +62,7 @@ enum AnimatedImage {
         let list = try prepare(try frames(source), context: context)
         guard let target else {
             let size = try await encodeWebP(list: list, quality: options.squashLevel == .gentle ? 0.72 : 0.48, to: output)
-            if size >= original { throw LimeError("Shrinking wouldn't make this file any smaller than it already is.") }
+            if size >= original { throw LimeError("Compressing wouldn't make this file any smaller than it already is.") }
             return
         }
         var low = 0.05, high = 0.95, best: Data?, smallest = Int.max

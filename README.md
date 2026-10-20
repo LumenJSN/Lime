@@ -11,19 +11,19 @@
    - **⌘ Command**: 도구 휠
    - **⌃ Control**: 동작 휠
 4. 키에서 손을 떼도 휠은 남아 있습니다. 원하는 조각 위에 놓으면 실행되고, 가운데나 바깥에 놓으면 취소됩니다. 휠이 떠 있을 때 다른 키를 탭하면 그 휠로 바뀝니다.
-5. 결과는 원본 옆에 `이름.확장자`로 저장됩니다. 도구 결과는 `이름 (smaller).jpg`처럼 괄호 꼬리표가 붙고, 이름이 겹치면 `이름 (smaller) 2.jpg`가 됩니다. 원본은 그대로 둡니다.
+5. 결과는 원본 옆에 `이름.확장자`로 저장됩니다. 도구 결과는 `이름 (compressed).jpg`처럼 괄호 꼬리표가 붙고, 이름이 겹치면 `이름 (compressed) 2.jpg`가 됩니다. 원본은 그대로 둡니다.
 
 Apple silicon과 macOS 13 이상이 필요합니다. 로컬 ad-hoc 서명 빌드라서 처음 열 때 우클릭 → 열기가 필요할 수 있습니다.
 
 ## 기능
 
 - **변환 269개 경로**: 이미지 8종, 오디오 8종, 비디오 6종과 GIF, PDF, DOCX/Pages/Markdown/RTF/RTFD/텍스트 클리핑/TXT/EPUB, PPT/PPTX, XLSX/XLS/ODS/CSV/TSV, SRT/VTT, ZIP/TAR/GZIP/RAR. RAR, PPT, XLS, RTF, RTFD, 텍스트 클리핑, WEBM은 읽기만 합니다. 전체 표는 설정 › Conversions에 있습니다.
-- **도구 27개**: Shrink(프리셋·목표 크기·비율), Tags(메타데이터 편집/삭제), Adjust(21개 슬라이더), Mark Up(화살표·선·상자·원·텍스트·펜·형광펜·번호·돋보기·그림), Backdrop(그라데이션 12종·단색 12종·이미지), Crop(비율·정확한 픽셀), Scan Code, Mask(얼굴·글자 자동 감지), Level Loudness, Silence, Cut(조용한 앞뒤 자동 제거), PDF Pages/Reorder/Combine, Pictures to PDF, Unpack, 클립 Crop·Tempo·Stitch·Stills·Slice·Mask, Waveform Video, Mono/Stereo, Censor, Mosaic.
-- **편집 창 조작**: Censor·Mask 구간은 끌어서 옮기고 양 끝으로 길이를 바꿉니다. 우클릭으로 "현재 위치부터"·"클립 전체"를 고르고, Delete로 지우고, 시작/끝을 초 단위로 입력할 수 있습니다. Slice에서 조각을 빼면 나머지를 한 클립(Save as One Clip)으로 저장하거나 따로 저장합니다. Mark Up에는 크기 핸들, 텍스트 폭 조절, Erase Ink, 돋보기 배율, ⌘V 이미지 붙여넣기가 있습니다. 컷 핸들은 화살표 키로 0.01초씩 움직입니다. 움직이는 WebP는 줄여도 애니메이션이 유지됩니다.
+- **도구 27개**: Compress(프리셋·목표 크기·비율), Metadata(편집/삭제), Edit(21개 슬라이더), Annotate(화살표·선·상자·원·텍스트·펜·형광펜·번호·돋보기·그림), Background(그라데이션 12종·단색 12종·이미지), Crop(비율·정확한 픽셀), Read QR, Redact(얼굴·글자 자동 감지), Normalize, Mute, Trim(조용한 앞뒤 자동 제거), PDF Split/Organize/Merge, Create PDF, Extract, 동영상 Crop·Speed·Join·Snapshot·Split·Redact, Visualize, Channels, Bleep, Collage.
+- **편집 창 조작**: Bleep·Redact 구간은 끌어서 옮기고 양 끝으로 길이를 바꿉니다. 우클릭으로 "현재 위치부터"·"클립 전체"를 고르고, Delete로 지우고, 시작/끝을 초 단위로 입력할 수 있습니다. Split Video에서 조각을 빼면 나머지를 한 영상(Export as One Video)으로 저장하거나 따로 저장합니다. Annotate에는 크기 핸들, 텍스트 폭 조절, Clear Drawing, 돋보기 배율, ⌘V 이미지 붙여넣기가 있습니다. 트림 핸들은 화살표 키로 0.01초씩 움직입니다. 움직이는 WebP는 압축해도 애니메이션이 유지됩니다.
 - **선택 도구**: 도구 휠 맨 뒤에 붙습니다. 설정 › Basics의 "Extra tools"로 켜고 끕니다.
-  - **GRAB TEXT**: 이미지·GIF·PDF의 글자를 기기 안에서 인식해(한국어·영어·일본어·중국어) 바로 클립보드에 복사하고 결과 창을 띄웁니다. 텍스트가 있는 PDF는 텍스트 레이어를 쓰고, 스캔 페이지만 OCR합니다. 저장하면 `이름 (text).txt`가 됩니다. 여러 파일도 한 번에 됩니다.
-  - **CUT OUT**: 사진의 사람·동물·사물을 찾아 배경을 지운 투명 PNG(`이름 (cutout).png`)를 만듭니다. macOS 14 이상에서 됩니다.
-- **동작 6개**: Shelf, Copy To, Move To, AirDrop, Path(경로 복사), Shell(Terminal/iTerm2 열기).
+  - **COPY TEXT**: 이미지·GIF·PDF의 글자를 기기 안에서 인식해(한국어·영어·일본어·중국어) 바로 클립보드에 복사하고 결과 창을 띄웁니다. 텍스트가 있는 PDF는 텍스트 레이어를 쓰고, 스캔 페이지만 OCR합니다. 저장하면 `이름 (text).txt`가 됩니다. 여러 파일도 한 번에 됩니다.
+  - **REMOVE BG**: 사진의 사람·동물·사물을 찾아 배경을 지운 투명 PNG(`이름 (no background).png`)를 만듭니다. macOS 14 이상에서 됩니다.
+- **동작 6개**: Shelf, Copy, Move, AirDrop, Copy Path, Terminal(Terminal/iTerm2 열기).
 - **Shelf**: 위쪽에 라임 탭이 달린 보관 카드입니다. 아이콘/목록 보기, 빈 곳을 끌어 여러 개 선택, 여러 파일 한 번에 끌어내기, 파일을 놓아 추가, 접기, 화면 가장자리에 붙이기, Space로 Quick Look을 지원합니다.
 - **설정**: Basics(Glass/Solid, 로그인 시 실행, 소리·햅틱, 휠별 키 조합, Shelf 동작, 터미널 앱), Outputs(형식별 품질·메타데이터·비트 깊이·압축·최대 영상 높이·EPUB/Office 레이아웃), Conversions(형식 표), Access(저장 위치·폴더 권한), About Lime.
 - 진행 카드, 취소, 끝난 뒤 클릭하면 Finder에서 보기.

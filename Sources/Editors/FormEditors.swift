@@ -20,7 +20,7 @@ struct CompressEditor: View {
             HStack {
                 Text("Mode").font(.system(size: 13)).foregroundStyle(.secondary)
                 Spacer()
-                EditorPopup(title: "Shrink by", selection: $model.options.sizeGoal,
+                EditorPopup(title: "Mode", selection: $model.options.sizeGoal,
                             options: [(.preset, "Preset"), (.fileSize, "Exact Size"), (.percentage, "Percentage")])
             }
             Divider().padding(.vertical, 14)
@@ -29,12 +29,12 @@ struct CompressEditor: View {
             case .fileSize: fileSize
             case .preset: preset
             }
-            Spacer(minLength: 0)
             if FormatCatalog.format(of: model.primaryFile) == "wav" {
-                Text("WAV is saved as lossless FLAC.").font(.system(size: 11)).foregroundStyle(.secondary).padding(.bottom, 8)
+                Text("WAV is saved as lossless FLAC.").font(.system(size: 11)).foregroundStyle(.secondary).padding(.top, 12)
             }
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 12).padding(.bottom, 18)
     }
 
     private var percentage: some View {
@@ -52,13 +52,13 @@ struct CompressEditor: View {
     private var fileSize: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Text("Goal size").font(.system(size: 13))
+                Text("Target size").font(.system(size: 13))
                 Spacer()
                 TextField("Size", text: $model.options.goalSizeText).textFieldStyle(.roundedBorder).frame(width: 90)
-                    .accessibilityLabel("Goal size")
+                    .accessibilityLabel("Target size")
                 EditorPopup(title: "Unit", selection: $model.options.goalSizeUnit, options: [("KB", "KB"), ("MB", "MB"), ("GB", "GB")])
             }
-            Text(model.files.count > 1 ? "Each file is shrunk toward its own goal." : "Enter a target size between 1 KB and the original size.")
+            Text(model.files.count > 1 ? "Each file is compressed toward its own target." : "Enter a target size between 1 KB and the original size.")
                 .font(.system(size: 13)).foregroundStyle(.secondary)
             if category == .video {
                 EditorRow(title: "Encoding") {
@@ -71,7 +71,7 @@ struct CompressEditor: View {
     private var preset: some View {
         VStack(alignment: .leading, spacing: 8) {
             EditorRow(title: "Strength") {
-                TintedSegments(title: "Strength", selection: $model.options.squashLevel, options: [(.gentle, "Gentle"), (.hard, "Hard")])
+                TintedSegments(title: "Strength", selection: $model.options.squashLevel, options: [(.gentle, "Balanced"), (.hard, "Strong")])
             }
             Text(model.options.squashLevel == .gentle ? "Looks close to the source and still saves space." : "Far smaller, with quality loss you may notice.")
                 .font(.system(size: 13)).foregroundStyle(.secondary)

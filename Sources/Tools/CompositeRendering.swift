@@ -134,7 +134,7 @@ enum FrameRenderer {
         context.interpolationQuality = .high
         context.draw(image, in: photo)
         context.restoreGState()
-        guard let output = context.makeImage() else { throw LimeError("Lime couldn't finish the backdrop.") }
+        guard let output = context.makeImage() else { throw LimeError("Lime couldn't finish the background.") }
         return output
     }
 
@@ -211,7 +211,7 @@ enum CollageRenderer {
 
     static func render(_ images: [CGImage], options: MosaicSettings) throws -> CGImage {
         let size = canvasSize(options)
-        guard let context = ImageIOKit.makeContext(width: Int(size.width), height: Int(size.height)) else { throw LimeError("Lime couldn't set up the mosaic.") }
+        guard let context = ImageIOKit.makeContext(width: Int(size.width), height: Int(size.height)) else { throw LimeError("Lime couldn't set up the collage.") }
         context.setFillColor(options.background.cgColor)
         context.fill(CGRect(origin: .zero, size: size))
         let gap = size.width * CGFloat(options.spacing)
@@ -231,7 +231,7 @@ enum CollageRenderer {
             context.draw(image, in: drawn)
             context.restoreGState()
         }
-        guard let output = context.makeImage() else { throw LimeError("Lime couldn't draw the mosaic.") }
+        guard let output = context.makeImage() else { throw LimeError("Lime couldn't draw the collage.") }
         return output
     }
 }

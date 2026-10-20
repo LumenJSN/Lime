@@ -21,15 +21,15 @@ enum MediaTools {
         let fmt = format(source)
         let original = ImageTools.fileSize(source)
         let outFormat = fmt == "wav" ? "flac" : fmt
-        let output = context.output(for: source, label: "smaller", ext: outFormat)
+        let output = context.output(for: source, label: "compressed", ext: outFormat)
         let target = options.targetBytes(original: original)
-        if let target, target >= original { throw LimeError("The goal has to be smaller than the file is now.") }
+        if let target, target >= original { throw LimeError("The target has to be smaller than the file is now.") }
         let base = ["-i", source.path] + FFmpeg.metadataArguments(preserve: true)
         if isAudio(source) {
             var kbps: Int?
             if let target {
                 kbps = Int(Double(target) * 8 / info.duration / 1000 * 0.97)
-                guard (kbps ?? 0) >= 16 else { throw LimeError("That's too small for a clip this long. Try a bigger goal.") }
+                guard (kbps ?? 0) >= 16 else { throw LimeError("That's too small for a clip this long. Try a bigger target.") }
             } else if !["flac", "wav", "aiff"].contains(fmt) {
                 let current = max(64, info.encodeKbps / 1000)
                 kbps = options.squashLevel == .gentle ? max(64, Int(Double(current) * 0.6)) : max(48, Int(Double(current) * 0.4))
@@ -65,14 +65,14 @@ enum MediaTools {
                 for _ in 0..<2 where ImageTools.fileSize(output) > target {
                     let ratio = Double(target) / Double(ImageTools.fileSize(output))
                     videoKbps = Int(Double(videoKbps) * ratio * 0.95)
-                    guard videoKbps >= 80 else { throw LimeError("This clip won't fit in that size. Try a bigger goal.") }
+                    guard videoKbps >= 80 else { throw LimeError("This clip won't fit in that size. Try a bigger target.") }
                     try await encode(videoKbps)
                 }
-                if ImageTools.fileSize(output) > target { throw LimeError("This clip won't fit in that size. Try a bigger goal.") }
+                if ImageTools.fileSize(output) > target { throw LimeError("This clip won't fit in that size. Try a bigger target.") }
             }
         }
         if target == nil, ImageTools.fileSize(output) >= original, fmt != "wav" {
-            throw LimeError("Shrinking wouldn't make this file any smaller than it already is.")
+            throw LimeError("Compressing wouldn't make this file any smaller than it already is.")
         }
     }
 
@@ -81,7 +81,7 @@ enum MediaTools {
     static func mute(_ source: URL, context: OperationContext) async throws {
         let info = try await FFmpeg.probe(source)
         guard info.hasVideo else { throw LimeError("Only clips with picture can be joined.") }
-        let out = context.output(for: source, label: "silent", ext: format(source))
+        let out = context.output(for: source, label: "muted", ext: format(source))
         try await FFmpeg.run(["-i", source.path, "-map", "0:v", "-map", "0:s?", "-c", "copy", "-an", "-map_metadata", "0", out.path], duration: info.duration, context: context)
     }
 
@@ -99,7 +99,7 @@ enum MediaTools {
             filter += ":measured_I=\(mi):measured_LRA=\(mlra):measured_TP=\(mtp):measured_thresh=\(mth):offset=\(off):linear=true"
         }
         context.progress(0.4)
-        let out = context.output(for: source, label: "levelled", ext: format(source))
+        let out = context.output(for: source, label: "normalized", ext: format(source))
         let sampleRate = info.sampleRate > 0 ? info.sampleRate : 48000
         var args = ["-i", source.path] + FFmpeg.metadataArguments(preserve: true)
         if isAudio(source) {
@@ -116,7 +116,7 @@ enum MediaTools {
         var duration = options.cutLength > 0 ? options.cutLength : info.duration - start
         guard start < info.duration, duration > 0.01 else { throw LimeError("The cut has to start and end inside the file.") }
         duration = min(duration, info.duration - start)
-        let out = context.output(for: source, label: "cut", ext: format(source))
+        let out = context.output(for: source, label: "trimmed", ext: format(source))
         var args = ["-ss", FFmpeg.timestamp(start), "-t", FFmpeg.timestamp(duration), "-i", source.path] + FFmpeg.metadataArguments(preserve: true)
         if isAudio(source) {
             args += ["-map", "0:a:0"]
@@ -165,7 +165,7 @@ enum MediaTools {
 
     static func join(_ sources: [URL], options: ToolChoices, context: OperationContext) async throws {
         let ordered = options.orderedFiles ?? sources
-        guard ordered.count >= 2 else { throw LimeError("Stitching needs two or more clips.") }
+        guard ordered.count >= 2 else { throw LimeError("Joining needs two or more videos.") }
         var infos: [MediaProbe] = []
         for url in ordered { infos.append(try await FFmpeg.probe(url)) }
         guard infos.allSatisfy(\.hasVideo) else { throw LimeError("Only clips with picture can be joined.") }
@@ -180,7 +180,7 @@ enum MediaTools {
             streams += "[v\(i)][a\(i)]"
         }
         filters.append("\(streams)concat=n=\(ordered.count):v=1:a=1[v][a]")
-        let out = context.output(for: ordered[0], label: "stitched", ext: "mp4")
+        let out = context.output(for: ordered[0], label: "joined", ext: "mp4")
         var info = infos[0]; info.width = w; info.height = h
         let args = inputs + ["-filter_complex", filters.joined(separator: ";"), "-map", "[v]", "-map", "[a]"]
             + FFmpeg.videoCodec("mp4", options: context.optionsForFormat("mp4"), info: info) + [out.path]
@@ -192,15 +192,15 @@ enum MediaTools {
         guard !times.isEmpty else { throw LimeError("Pick at least one moment inside the clip.") }
         let info = try await FFmpeg.probe(source)
         if times.count == 1 {
-            let out = context.output(for: source, label: "still", ext: "png")
+            let out = context.output(for: source, label: "snapshot", ext: "png")
             try await FFmpeg.run(["-ss", FFmpeg.timestamp(times[0]), "-i", source.path, "-frames:v", "1", "-c:v", "png", out.path], duration: 0, context: nil)
             return
         }
-        let folder = try context.outputFolder(for: source, label: "stills")
+        let folder = try context.outputFolder(for: source, label: "snapshots")
         for (index, t) in times.enumerated() {
             try Task.checkCancellation()
             guard t <= info.duration else { throw LimeError("There's no picture at that moment. Try a bit earlier.") }
-            let name = String(format: "Still %03d at %.3fs.png", index + 1, t)
+            let name = String(format: "Snapshot %03d at %.3fs.png", index + 1, t)
             try await FFmpeg.run(["-ss", FFmpeg.timestamp(t), "-i", source.path, "-frames:v", "1", "-c:v", "png", folder.appendingPathComponent(name).path], duration: 0, context: nil)
             context.progress(Double(index + 1) / Double(times.count))
         }
@@ -217,7 +217,7 @@ enum MediaTools {
         let fmt = format(source)
         let codec = codecArguments(for: source, info: info, context: context)
         if options.clipExport == .merged {
-            let out = context.output(for: source, label: "cut", ext: fmt)
+            let out = context.output(for: source, label: "trimmed", ext: fmt)
             var filters: [String] = [], streams = ""
             for (i, clip) in clips.enumerated() {
                 filters.append("[0:v:0]trim=\(clip.start):\(clip.end),setpts=PTS-STARTPTS[v\(i)]")
@@ -229,7 +229,7 @@ enum MediaTools {
                                  duration: clips.reduce(0) { $0 + $1.end - $1.start }, context: context)
             return
         }
-        let folder = try context.outputFolder(for: source, label: "slices")
+        let folder = try context.outputFolder(for: source, label: "clips")
         let stem = FormatCatalog.stem(of: source)
         for (n, clip) in clips.enumerated() {
             try Task.checkCancellation()
@@ -244,7 +244,7 @@ enum MediaTools {
         let info = try await FFmpeg.probe(source)
         guard info.hasAudio, info.duration > 0 else { throw LimeError("No playable sound here.") }
         let size: (Int, Int) = options.waveCanvas == .landscape ? (1920, 1080) : options.waveCanvas == .portrait ? (1080, 1920) : (1080, 1080)
-        let out = context.output(for: source, label: "waveform", ext: "mp4")
+        let out = context.output(for: source, label: "visualizer", ext: "mp4")
         var args: [String]
         if options.waveLook == .poster {
             guard let image = options.posterURL else { throw LimeError("Pick a picture for the poster first.") }
@@ -298,7 +298,7 @@ enum MediaTools {
             }
             last = "r\(i)"
         }
-        let out = context.output(for: source, label: "masked", ext: format(source))
+        let out = context.output(for: source, label: "redacted", ext: format(source))
         let args = ["-i", source.path, "-filter_complex", chain.joined(separator: ";"), "-map", "[\(last)]", "-map", "0:a?", "-map_metadata", "-1"]
             + codecArguments(for: source, info: info, context: context) + [out.path]
         try await FFmpeg.run(args, duration: info.duration, context: context)
@@ -308,11 +308,11 @@ enum MediaTools {
         let info = try await FFmpeg.probe(source)
         guard info.hasAudio else { throw LimeError("This file has no sound.") }
         let ranges = options.censorSpans.filter { $0.upperBound > $0.lowerBound && $0.lowerBound < info.duration }
-        guard !ranges.isEmpty else { throw LimeError("Mark at least one part to censor.") }
+        guard !ranges.isEmpty else { throw LimeError("Mark at least one part to bleep.") }
         let condition = ranges.map { "between(t,\(FFmpeg.timestamp($0.lowerBound)),\(FFmpeg.timestamp(min($0.upperBound, info.duration))))" }.joined(separator: "+")
         let rate = info.sampleRate > 0 ? info.sampleRate : 48000
         let filter = "[0:a:0]volume=0:enable='\(condition)'[m];sine=frequency=1000:sample_rate=\(rate):duration=\(FFmpeg.timestamp(info.duration)),volume=0.35,volume=0:enable='not(\(condition))'[b];[m][b]amix=inputs=2:duration=first:normalize=0[a]"
-        let out = context.output(for: source, label: "censored", ext: format(source))
+        let out = context.output(for: source, label: "bleeped", ext: format(source))
         var args = ["-i", source.path, "-filter_complex", filter, "-map", "[a]"] + FFmpeg.metadataArguments(preserve: true)
         args += codecArguments(for: source, info: info, context: context)
         try await FFmpeg.run(args + [out.path], duration: info.duration, context: context)

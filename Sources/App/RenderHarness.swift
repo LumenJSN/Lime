@@ -45,7 +45,16 @@ enum RenderHarness {
                 var a = Markup(kind: .arrow, start: CGPoint(x: 100, y: 100), end: CGPoint(x: 600, y: 400)); a.lineWidth = 10
                 model.options.annotations = [a]
             }
-            jobs.append(("tool-\(tool.rawValue)", AnyView(ToolWindowContent(model: model, apply: {}, cancel: {})), ToolWindowController.size(for: tool), 1.5))
+            var size = ToolWindowController.size(for: tool)
+            if ToolWindowController.fitsContent(tool) { size.height = ToolWindowController.contentHeight(model: model, width: size.width) }
+            jobs.append(("tool-\(tool.rawValue)", AnyView(ToolWindowContent(model: model, apply: {}, cancel: {})), size, 1.5))
+        }
+        for goal in [ToolChoices.SizeGoal.preset, .fileSize] {
+            let model = ToolEditorModel(tool: .compress, files: [photo], settings: settings)
+            model.options.sizeGoal = goal
+            let width = ToolWindowController.size(for: .compress).width
+            jobs.append(("tool-compress-\(goal.rawValue)", AnyView(ToolWindowContent(model: model, apply: {}, cancel: {})),
+                         CGSize(width: width, height: ToolWindowController.contentHeight(model: model, width: width)), 1.5))
         }
         for tool in [LimeTool.levelAudio, .cutAudio, .censorAudio, .remixChannels] {
             let model = ToolEditorModel(tool: tool, files: [audio], settings: settings)

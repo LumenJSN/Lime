@@ -100,30 +100,30 @@ enum LimeTool: String, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .compress: "SHRINK"; case .stripTags: "TAGS"; case .adjustPhoto: "ADJUST"
-        case .markUpPhoto: "MARK UP"; case .addBackdrop: "BACKDROP"; case .cropPhoto: "CROP"
-        case .levelAudio: "LEVEL"; case .silenceVideo: "SILENCE"; case .cutVideo: "CUT"
-        case .splitPages: "PAGES"; case .arrangePages: "REORDER"; case .unpackArchive: "UNPACK"
-        case .imagesToPDF: "TO PDF"; case .combinePDFs: "COMBINE"; case .cropClip: "CROP"
-        case .retimeVideo: "TEMPO"; case .stitchVideos: "STITCH"; case .grabFrames: "STILLS"
-        case .sliceVideo: "SLICE"; case .waveVideo: "WAVE\nVIDEO"; case .cutAudio: "CUT"
-        case .remixChannels: "MONO /\nSTEREO"; case .makeMosaic: "MOSAIC"; case .scanQR: "SCAN\nCODE"
-        case .maskPhoto, .maskVideo: "MASK"; case .censorAudio: "CENSOR"
-        case .copyText: "GRAB TEXT"; case .removeBackground: "CUT OUT"
+        case .compress: "COMPRESS"; case .stripTags: "METADATA"; case .adjustPhoto: "EDIT"
+        case .markUpPhoto: "ANNOTATE"; case .addBackdrop: "BACKGROUND"; case .cropPhoto: "CROP"
+        case .levelAudio: "NORMALIZE"; case .silenceVideo: "MUTE"; case .cutVideo: "TRIM"
+        case .splitPages: "SPLIT"; case .arrangePages: "ORGANIZE"; case .unpackArchive: "EXTRACT"
+        case .imagesToPDF: "CREATE PDF"; case .combinePDFs: "MERGE"; case .cropClip: "CROP"
+        case .retimeVideo: "SPEED"; case .stitchVideos: "JOIN"; case .grabFrames: "SNAPSHOT"
+        case .sliceVideo: "SPLIT"; case .waveVideo: "VISUALIZE"; case .cutAudio: "TRIM"
+        case .remixChannels: "CHANNELS"; case .makeMosaic: "COLLAGE"; case .scanQR: "READ QR"
+        case .maskPhoto, .maskVideo: "REDACT"; case .censorAudio: "BLEEP"
+        case .copyText: "COPY TEXT"; case .removeBackground: "REMOVE BG"
         }
     }
     var name: String {
         switch self {
-        case .compress: "Shrink File"; case .stripTags: "Edit Tags"; case .adjustPhoto: "Adjust Photo"
-        case .markUpPhoto: "Mark Up Photo"; case .addBackdrop: "Backdrop"; case .cropPhoto: "Crop Photo"
-        case .levelAudio: "Level Loudness"; case .silenceVideo: "Silence Clip"; case .cutVideo: "Cut Clip"
-        case .splitPages: "Pages to Files"; case .arrangePages: "Reorder Pages"; case .unpackArchive: "Unpack"
-        case .imagesToPDF: "Pictures to PDF"; case .combinePDFs: "Combine PDFs"; case .cropClip: "Crop Clip"
-        case .retimeVideo: "Retime Video"; case .stitchVideos: "Stitch Clips"; case .grabFrames: "Save Stills"
-        case .sliceVideo: "Slice Clip"; case .waveVideo: "Waveform Video"; case .cutAudio: "Cut Audio"
-        case .remixChannels: "Mono / Stereo"; case .makeMosaic: "Photo Mosaic"; case .scanQR: "Scan Codes"
-        case .maskPhoto: "Mask Photo"; case .maskVideo: "Mask Clip"; case .censorAudio: "Censor Audio"
-        case .copyText: "Grab Text"; case .removeBackground: "Cut Out Subject"
+        case .compress: "Compress"; case .stripTags: "Edit Metadata"; case .adjustPhoto: "Edit Photo"
+        case .markUpPhoto: "Annotate Photo"; case .addBackdrop: "Add Background"; case .cropPhoto: "Crop Image"
+        case .levelAudio: "Normalize Volume"; case .silenceVideo: "Mute Video"; case .cutVideo: "Trim Video"
+        case .splitPages: "Split PDF"; case .arrangePages: "Organize PDF"; case .unpackArchive: "Extract Archive"
+        case .imagesToPDF: "Create PDF"; case .combinePDFs: "Merge PDFs"; case .cropClip: "Crop Video"
+        case .retimeVideo: "Change Speed"; case .stitchVideos: "Join Videos"; case .grabFrames: "Video Snapshots"
+        case .sliceVideo: "Split Video"; case .waveVideo: "Audio Visualizer"; case .cutAudio: "Trim Audio"
+        case .remixChannels: "Audio Channels"; case .makeMosaic: "Create Collage"; case .scanQR: "Read QR Code"
+        case .maskPhoto: "Redact Photo"; case .maskVideo: "Redact Video"; case .censorAudio: "Bleep Audio"
+        case .copyText: "Copy Text"; case .removeBackground: "Remove Background"
         }
     }
     var symbol: String {
@@ -226,8 +226,8 @@ enum DropAction: String, CaseIterable, Sendable {
     case shelf, copy, move, airDrop, pathToClipboard, shellHere
     var title: String {
         switch self {
-        case .shelf: "SHELF"; case .copy: "COPY TO"; case .move: "MOVE TO"
-        case .airDrop: "AIRDROP"; case .pathToClipboard: "PATH"; case .shellHere: "SHELL"
+        case .shelf: "SHELF"; case .copy: "COPY"; case .move: "MOVE"
+        case .airDrop: "AIRDROP"; case .pathToClipboard: "COPY\nPATH"; case .shellHere: "TERMINAL"
         }
     }
     var symbol: String {

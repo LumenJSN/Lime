@@ -169,7 +169,7 @@ struct MarkupEditor: View {
                 }
                 Spacer()
                 if kind == .draw {
-                    Button("Erase Ink") { model.options.annotations.removeAll { $0.kind == .draw }; if selectedKind == .draw { selected = nil } }
+                    Button("Clear Drawing") { model.options.annotations.removeAll { $0.kind == .draw }; if selectedKind == .draw { selected = nil } }
                         .controlSize(.small).help("Wipe every stroke")
                         .disabled(!model.options.annotations.contains { $0.kind == .draw })
                 }
@@ -262,7 +262,7 @@ struct MarkupEditor: View {
     private var hint: String {
         switch kind {
         case .arrow: "Drag from where the arrow starts to where it points. Drag any markup to move it."
-        case .draw: "Drag to draw. Erase Ink wipes every stroke."
+        case .draw: "Drag to draw. Clear Drawing wipes every stroke."
         case .highlight: "Drag over the photo to highlight."
         case .magnifier: "Set the zoom, then click a spot to drop a loupe on it."
         case .text: "Use Text for another box. Drag its edge to move it, or its side knobs to make it wider."
@@ -418,9 +418,9 @@ struct FrameEditor: View {
                         Button(action: chooseImage) {
                             Image(systemName: "photo.badge.plus").frame(width: 28, height: 24).background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.1)))
                         }
-                        .buttonStyle(.plain).help("Picture backdrop")
+                        .buttonStyle(.plain).help("Background image")
                         ColorCapsule(title: "Own colour", color: Binding(get: { custom }, set: { custom = $0; model.options.backdropSettings.background = .color($0) }))
-                            .help("Pick backdrop colour")
+                            .help("Pick background colour")
                     }
                 }
             }
@@ -447,7 +447,7 @@ struct FrameEditor: View {
     }
 
     private func chooseImage() {
-        let panel = NSOpenPanel(); panel.allowedContentTypes = [.image]; panel.message = "Pick backdrop picture"
+        let panel = NSOpenPanel(); panel.allowedContentTypes = [.image]; panel.message = "Pick background image"
         if panel.runModal() == .OK, let url = panel.url { model.options.backdropSettings.background = .image(url) }
     }
 

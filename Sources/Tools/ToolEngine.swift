@@ -63,7 +63,7 @@ enum ToolEngine {
         case .splitPages: try PDFTools.split(file, context: context)
         case .arrangePages: try PDFTools.organize(file, options: options, context: context)
         case .unpackArchive:
-            let folder = try context.outputFolder(for: file, label: "unpacked")
+            let folder = try context.outputFolder(for: file, label: "extracted")
             try await ArchiveTranscoder.extract(file, into: folder)
         case .removeBackground: try await BackgroundRemoval.run(file, context: context)
         case .scanQR, .copyText, .imagesToPDF, .combinePDFs, .stitchVideos, .makeMosaic:

@@ -199,11 +199,11 @@ struct FrameGrabEditor: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 6))
                                 .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color(nsColor: Brand.accent), lineWidth: 2))
                             }
-                            .buttonStyle(.plain).help("Show this still")
+                            .buttonStyle(.plain).help("Show this frame")
                             Button { model.options.frameGrabTimes.removeAll { $0 == t } } label: {
                                 Image(systemName: "xmark.circle.fill").font(.system(size: 14)).foregroundStyle(.white, .black.opacity(0.6))
                             }
-                            .buttonStyle(.plain).padding(3).help("Drop this still")
+                            .buttonStyle(.plain).padding(3).help("Remove this frame")
                         }
                         .task(id: t) { thumbs[t] = await frame(at: t) }
                     }
@@ -272,7 +272,7 @@ struct SplitVideoEditor: View {
                 } else {
                     EditorRow(title: "Export", secondary: true) {
                         TintedSegments(title: "Export", selection: Binding(get: { model.options.clipExport }, set: { model.options.clipExport = $0 }),
-                                       options: [(.merged, "One Clip"), (.clips, "Separate Clips")], compact: true)
+                                       options: [(.merged, "One Video"), (.clips, "Separate Clips")], compact: true)
                     }
                     note("Drop pieces you don't want, then save the rest as one clip or as separate files.")
                 }
@@ -375,7 +375,7 @@ struct VideoRedactionEditor: View {
             }
             EditorRow(title: "Color", secondary: true) { ColorCapsule(title: "Color", color: $model.options.maskColor) }
                 .opacity(model.options.maskFill == .solid ? 1 : 0.4).disabled(model.options.maskFill != .solid)
-            Text("Masks").font(.system(size: 11, weight: .semibold))
+            Text("Redactions").font(.system(size: 11, weight: .semibold))
             ScrollView {
                 VStack(spacing: 4) {
                     ForEach(Array(model.options.redactions.enumerated()), id: \.element.id) { index, item in
@@ -411,10 +411,10 @@ struct VideoRedactionEditor: View {
                 .frame(height: 20)
                 .accessibilityLabel("Mask \(index + 1)")
                 .contextMenu {
-                    Button("Mask from here") { addAtPlayhead() }
-                    Button("Keep for Whole Clip") { update(item.id) { $0.start = 0; $0.end = .infinity } }
+                    Button("Redact from here") { addAtPlayhead() }
+                    Button("Keep for Whole Video") { update(item.id) { $0.start = 0; $0.end = .infinity } }
                     Divider()
-                    Button("Remove Mask") { delete(item.id) }
+                    Button("Remove Redaction") { delete(item.id) }
                 }
             Button { delete(item.id) } label: {
                 Image(systemName: "minus.circle").font(.system(size: 11)).foregroundStyle(.secondary)
@@ -469,12 +469,12 @@ struct BleepEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Text("Censored parts").font(.system(size: 13, weight: .semibold))
+                Text("Bleeps").font(.system(size: 13, weight: .semibold))
                 Text("\(model.options.censorSpans.count)").font(.system(size: 13)).foregroundStyle(.secondary)
             }
             .padding(.top, 12)
             HStack(spacing: 8) {
-                Text("Censor").font(.system(size: 11)).foregroundStyle(.secondary).frame(width: 40, alignment: .leading)
+                Text("Bleep").font(.system(size: 11)).foregroundStyle(.secondary).frame(width: 40, alignment: .leading)
                 bleepLane.frame(height: 26)
             }
             HStack(spacing: 8) {
@@ -493,7 +493,7 @@ struct BleepEditor: View {
                     Button { deleteSelected() } label: { Image(systemName: "trash") }.buttonStyle(.plain).help("Delete selected bleep")
                 }
             } else {
-                Text("Drag along the censor track to mark a part. Drag the part or its edges to change it.")
+                Text("Drag along the bleep track to mark a part. Drag the part or its edges to change it.")
                     .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Divider()
@@ -502,7 +502,7 @@ struct BleepEditor: View {
                     EditorButton(title: "Original", symbol: preview.playing == nil && player.playing ? "stop.fill" : nil) {
                         preview.stop(); player.toggle()
                     }
-                    EditorButton(title: "Censored", symbol: preview.playing == "bleeps" ? "stop.fill" : "play.fill") {
+                    EditorButton(title: "With Bleeps", symbol: preview.playing == "bleeps" ? "stop.fill" : "play.fill") {
                         player.pause(); preview.toggle("bleeps", source: model.primaryFile, filter: bleepFilter, complex: true)
                     }
                     .help("Play or pause (Space)")
@@ -518,12 +518,12 @@ struct BleepEditor: View {
     }
 
     private var bleepLane: some View {
-        RangeLane(ranges: $model.options.censorSpans, selected: $selected, duration: player.duration, emptyText: "Drag to censor") { player.seek($0) }
-            .accessibilityLabel("Censor track")
+        RangeLane(ranges: $model.options.censorSpans, selected: $selected, duration: player.duration, emptyText: "Drag to bleep") { player.seek($0) }
+            .accessibilityLabel("Bleep track")
             .contextMenu {
-                Button("Censor from here") { addAtPlayhead() }
-                Button("Censor Everything") { model.options.censorSpans = [0...player.duration]; selected = 0 }
-                if selected != nil { Divider(); Button("Remove Censor") { deleteSelected() } }
+                Button("Bleep from here") { addAtPlayhead() }
+                Button("Bleep Everything") { model.options.censorSpans = [0...player.duration]; selected = 0 }
+                if selected != nil { Divider(); Button("Remove Bleep") { deleteSelected() } }
             }
     }
 
