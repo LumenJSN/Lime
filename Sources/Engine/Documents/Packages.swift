@@ -208,45 +208,11 @@ enum EPUBReader {
                let end = html.range(of: "</body>", options: [.caseInsensitive, .backwards]) {
                 html = String(html[html.index(after: open)..<end.lowerBound])
             }
-            body += "<div class=\"chapter\">\n" + sanitize(html, folder: chapter.deletingLastPathComponent(), root: root) + "\n</div>\n"
+            body += "<div class=\"chapter\">\n" + ChapterSanitizer.clean(html, folder: chapter.deletingLastPathComponent(), root: root) + "\n</div>\n"
         }
         guard !body.isEmpty else { throw LimeError("This document is blank.") }
         let html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>\(HTMLEscape.text(title))</title></head><body>\(body)</body></html>"
         return Book(html: html, baseURL: base, title: title)
     }
 
-    /// Strips active and embedding elements, and points every resource at a
-    /// file inside the book. Remote and outside resources are dropped so
-    /// rendering never touches the network or other local files; links keep
-    /// only web, mail and in-book targets.
-    static func sanitize(_ html: String, folder: URL, root: URL) -> String {
-        var html = html.replacingOccurrences(of: #"<(script|iframe|object|embed|style)\b[^>]*>[\s\S]*?</\1\s*>"#,
-                                             with: "", options: [.regularExpression, .caseInsensitive])
-        html = html.replacingOccurrences(of: #"<(script|iframe|object|embed|style|link|meta|base)\b[^>]*>"#,
-                                         with: "", options: [.regularExpression, .caseInsensitive])
-        html = html.replacingOccurrences(of: #"\s(on\w+|srcset|poster|background)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)"#,
-                                         with: "", options: [.regularExpression, .caseInsensitive])
-        html = html.replacingOccurrences(of: #"\sstyle\s*=\s*("[^"]*url\([^"]*"|'[^']*url\([^']*')"#,
-                                         with: "", options: [.regularExpression, .caseInsensitive])
-        let attribute = #"\b(src|xlink:href|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))"#
-        guard let pattern = try? NSRegularExpression(pattern: attribute, options: .caseInsensitive) else { return html }
-        var result = "", cursor = html.startIndex
-        for match in pattern.matches(in: html, range: NSRange(html.startIndex..., in: html)) {
-            guard let whole = Range(match.range, in: html), let nameRange = Range(match.range(at: 1), in: html) else { continue }
-            let value = (2...4).lazy.compactMap { Range(match.range(at: $0), in: html) }.first.map { String(html[$0]) } ?? ""
-            let name = html[nameRange].lowercased()
-            result += html[cursor..<whole.lowerBound]
-            let safe: String
-            if name == "href", SafeLink.isWebOrMail(value) || value.hasPrefix("#") {
-                safe = value
-            } else if name != "href", value.lowercased().hasPrefix("data:image/") {
-                safe = value
-            } else {
-                safe = PackagePath.contained(value, from: folder, in: root)?.absoluteString ?? ""
-            }
-            result += "\(html[nameRange])=\"\(safe.replacingOccurrences(of: "\"", with: "&quot;"))\""
-            cursor = whole.upperBound
-        }
-        return result + html[cursor...]
-    }
 }

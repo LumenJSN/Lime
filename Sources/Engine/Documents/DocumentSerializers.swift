@@ -29,10 +29,13 @@ enum SafeLink {
     /// Inline images, or relative paths that stay inside the document's folder.
     /// Remote images are refused so rendering never reaches the network.
     static func isAllowedImage(_ source: String) -> Bool {
-        let path = normalized(source)
-        if path.lowercased().hasPrefix("data:image/") { return true }
+        let raw = normalized(source)
+        if raw.lowercased().hasPrefix("data:image/") { return true }
+        // Check the path as WebKit will use it: percent-decoded once, with
+        // anything still encoded (double encoding) refused outright.
+        guard let path = raw.removingPercentEncoding, !path.contains("%") else { return false }
         return !path.isEmpty && !hasScheme(path) && !path.hasPrefix("/") && !path.hasPrefix("\\")
-            && !path.split(whereSeparator: { $0 == "/" || $0 == "\\" }).contains("..")
+            && !path.split(whereSeparator: { $0 == "/" || $0 == "\\" }).contains { $0 == ".." || $0 == "." }
     }
 }
 
