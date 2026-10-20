@@ -91,8 +91,8 @@ enum MediaTools {
         let i = options.levelTargetLUFS, lra = options.levelRangeLU, tp = options.levelPeakDB
         // Pass 1 measures; pass 2 applies a linear gain where possible.
         let ffmpeg = try BundledTool.url("ffmpeg")
-        let measure = try await ProcessRunner.run(ffmpeg, ["-nostdin", "-hide_banner", "-i", source.path, "-vn", "-af",
-                                                           "loudnorm=I=\(i):LRA=\(lra):TP=\(tp):print_format=json", "-f", "null", "-"])
+        let measure = try await ProcessRunner.run(ffmpeg, FFmpeg.guarded(["-nostdin", "-hide_banner", "-i", source.path, "-vn", "-af",
+                                                           "loudnorm=I=\(i):LRA=\(lra):TP=\(tp):print_format=json", "-f", "null", "-"]))
         var filter = "loudnorm=I=\(i):LRA=\(lra):TP=\(tp)"
         if let start = measure.stderr.range(of: "{", options: .backwards), let json = try? JSONSerialization.jsonObject(with: Data(measure.stderr[start.lowerBound...].utf8)) as? [String: String],
            let mi = json["input_i"], let mlra = json["input_lra"], let mtp = json["input_tp"], let mth = json["input_thresh"], let off = json["target_offset"] {

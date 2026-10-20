@@ -18,9 +18,26 @@ struct MediaProbe: Sendable {
 }
 
 enum FFmpeg {
+    /// Demuxers allowed for files handed to Lime. Playlist and reference
+    /// formats (HLS, DASH, concat, IMF, lavfi, SDP…) are left out so a crafted
+    /// file cannot make ffmpeg open other local files or reach the network.
+    static let inputFormats = [
+        "mov", "matroska", "webm", "avi", "asf", "flv", "mpegts", "mpeg", "m4v", "h264", "hevc", "mjpeg",
+        "mp3", "wav", "w64", "flac", "ogg", "aiff", "aac", "caf", "ac3", "eac3", "dts", "wv", "amr",
+        "gif", "gif_pipe", "apng", "image2", "png_pipe", "jpeg_pipe", "webp_pipe", "tiff_pipe", "bmp_pipe",
+        "srt", "webvtt", "ass",
+    ].joined(separator: ",")
+    /// Input options that keep ffmpeg on local files and the allowed demuxers.
+    static let inputGuards = ["-protocol_whitelist", "file,pipe", "-format_whitelist", inputFormats]
+
+    /// Puts `inputGuards` in front of every `-i`.
+    static func guarded(_ arguments: [String]) -> [String] {
+        arguments.flatMap { $0 == "-i" ? inputGuards + [$0] : [$0] }
+    }
+
     static func probe(_ url: URL) async throws -> MediaProbe {
         let tool = try BundledTool.url("ffprobe")
-        let result = try await ProcessRunner.run(tool, ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", url.path])
+        let result = try await ProcessRunner.run(tool, ["-v", "error", "-print_format", "json", "-show_format", "-show_streams"] + inputGuards + [url.path])
         guard let json = try JSONSerialization.jsonObject(with: result.stdout) as? [String: Any] else {
             throw LimeError("Lime couldn't tell how long \(url.lastPathComponent) is.")
         }
@@ -59,10 +76,12 @@ enum FFmpeg {
         return info
     }
 
-    /// Runs ffmpeg and maps `-progress` timestamps onto 0…1.
-    static func run(_ arguments: [String], duration: Double, context: OperationContext?, span: ClosedRange<Double> = 0...1) async throws {
+    /// Runs ffmpeg and maps `-progress` timestamps onto 0…1. Inputs are
+    /// guarded unless `trustedInputs` is set for lists Lime wrote itself.
+    static func run(_ arguments: [String], duration: Double, context: OperationContext?, span: ClosedRange<Double> = 0...1,
+                    trustedInputs: Bool = false) async throws {
         let tool = try BundledTool.url("ffmpeg")
-        let args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-progress", "pipe:1", "-nostats"] + arguments
+        let args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-progress", "pipe:1", "-nostats"] + (trustedInputs ? arguments : guarded(arguments))
         try await ProcessRunner.run(tool, args, onOutput: { text in
             guard let context, duration > 0 else { return }
             for line in text.split(separator: "\n") where line.hasPrefix("out_time_us=") {

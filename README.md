@@ -42,7 +42,7 @@ Pages, Keynote, Numbers, Word, PowerPoint, Excel 중 어느 것도 실행하지 
 ```sh
 ./Scripts/BuildMediaTools.sh   # 처음 한 번: ffmpeg/ffprobe를 공개 소스에서 빌드해 Resources/Tools에 넣음
 ./build.sh   # ../Lime.app 생성
-./test.sh    # 상호작용 324개, 변환 269개 경로, 도구 53개 검사
+./test.sh    # 상호작용 337개, 변환 269개 경로, 도구 55개 검사
 ```
 
 FFmpeg(LGPL)과 LAME, Opus, Vorbis, libvpx, libwebp는 `Scripts/BuildMediaTools.sh`로 공개 소스에서 직접 빌드했습니다. 라이선스는 `Resources/Licenses`에 있습니다. `Lime.app --render <폴더>`는 휠·설정·편집 창을 PNG로 그립니다.

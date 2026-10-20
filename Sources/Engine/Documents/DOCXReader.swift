@@ -78,7 +78,9 @@ enum DOCXReader {
                     case "br", "cr": line.append(NSAttributedString(string: "\u{2028}", attributes: attributes))
                     case "drawing", "pict":
                         let embed = (try? e.nodes(forXPath: ".//*[local-name()='blip']"))?.compactMap { ($0 as? XMLElement)?.attributes?.first { $0.localName == "embed" }?.stringValue }.first
-                        if let embed, let target = rels[embed], let image = NSImage(contentsOf: root.appendingPathComponent("word").appendingPathComponent(target)) {
+                        if let embed, let rel = rels[embed], !rel.external,
+                           let file = PackagePath.contained(rel.target, from: root.appendingPathComponent("word"), in: root),
+                           let image = NSImage(contentsOf: file) {
                             let attachment = NSTextAttachment()
                             attachment.image = image
                             if let extent = (try? e.nodes(forXPath: ".//*[local-name()='extent']"))?.first as? XMLElement,
@@ -95,7 +97,7 @@ enum DOCXReader {
                 guard let e = child as? XMLElement else { continue }
                 if e.localName == "r" { appendRun(e, link: nil) }
                 else if e.localName == "hyperlink" {
-                    let link = e.attributes?.first { $0.localName == "id" }?.stringValue.flatMap { rels[$0] }.flatMap(URL.init(string:))
+                    let link = e.attributes?.first { $0.localName == "id" }?.stringValue.flatMap { rels[$0] }.flatMap { $0.external && SafeLink.isWebOrMail($0.target) ? URL(string: $0.target) : nil }
                     for r in (e.children ?? []).compactMap({ $0 as? XMLElement }) where r.localName == "r" { appendRun(r, link: link) }
                 } else if ["ins", "smartTag", "sdt", "fldSimple"].contains(e.localName ?? "") {
                     for r in (try? e.nodes(forXPath: ".//*[local-name()='r']")) ?? [] { if let r = r as? XMLElement { appendRun(r, link: nil) } }
@@ -185,13 +187,14 @@ enum DOCXReader {
         return result
     }
 
-    private static func loadRelationships(_ url: URL) -> [String: String] {
+    /// Relationship targets by id. External ones are URLs and are never read
+    /// as files; internal ones are checked against the package when used.
+    private static func loadRelationships(_ url: URL) -> [String: (target: String, external: Bool)] {
         guard let doc = try? XMLDocument(contentsOf: url, options: []) else { return [:] }
-        var map: [String: String] = [:]
+        var map: [String: (target: String, external: Bool)] = [:]
         for node in (try? doc.nodes(forXPath: "//*[local-name()='Relationship']")) ?? [] {
             guard let e = node as? XMLElement, let id = e.attr("Id"), let target = e.attr("Target") else { continue }
-            if target.contains("..") && e.attr("TargetMode") != "External" { continue }
-            map[id] = target
+            map[id] = (target, e.attr("TargetMode") == "External")
         }
         return map
     }

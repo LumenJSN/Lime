@@ -109,7 +109,7 @@ enum WaveformData {
         let key = "\(url.path)#\(buckets)#\(channels)" as NSString
         if let cached = cache.object(forKey: key) as? [[Float]] { return cached }
         guard let tool = try? BundledTool.url("ffmpeg"),
-              let result = try? await ProcessRunner.run(tool, ["-v", "error", "-i", url.path, "-vn", "-ac", String(channels), "-ar", "4000", "-f", "s16le", "-"]) else { return [] }
+              let result = try? await ProcessRunner.run(tool, FFmpeg.guarded(["-v", "error", "-i", url.path, "-vn", "-ac", String(channels), "-ar", "4000", "-f", "s16le", "-"])) else { return [] }
         let samples: [Int16] = result.stdout.withUnsafeBytes { Array($0.bindMemory(to: Int16.self)) }
         let frames = samples.count / channels
         guard frames > 0 else { return [] }

@@ -262,8 +262,8 @@ final class RenderedPreview: ObservableObject {
         Task {
             let out = FileManager.default.temporaryDirectory.appendingPathComponent("LimeChannel-\(UUID().uuidString).wav")
             guard let tool = try? BundledTool.url("ffmpeg"),
-                  (try? await ProcessRunner.run(tool, ["-v", "error", "-y", "-t", "120", "-i", source.path]
-                                                + (complex ? ["-filter_complex", filter, "-map", "[a]"] : ["-af", filter]) + [out.path])) != nil,
+                  (try? await ProcessRunner.run(tool, FFmpeg.guarded(["-v", "error", "-y", "-t", "120", "-i", source.path]
+                                                + (complex ? ["-filter_complex", filter, "-map", "[a]"] : ["-af", filter]) + [out.path]))) != nil,
                   let player = try? AVAudioPlayer(contentsOf: out), playing == id else { if playing == id { playing = nil }; return }
             audio = player
             player.play()

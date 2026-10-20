@@ -7,6 +7,35 @@ enum HTMLEscape {
     }
 }
 
+/// Link and image targets allowed in documents Lime writes or renders.
+enum SafeLink {
+    /// The target as a browser reads it: spaces and control characters dropped.
+    private static func normalized(_ link: String) -> String {
+        String(String.UnicodeScalarView(link.unicodeScalars.filter { $0.value > 0x20 && $0.value != 0x7F }))
+    }
+    private static func hasScheme(_ link: String) -> Bool {
+        normalized(link).range(of: #"^[A-Za-z][A-Za-z0-9+.-]*:"#, options: .regularExpression) != nil
+    }
+
+    static func isWebOrMail(_ link: String) -> Bool {
+        let lower = normalized(link).lowercased()
+        return lower.hasPrefix("http://") || lower.hasPrefix("https://") || lower.hasPrefix("mailto:")
+    }
+
+    /// Web and mail links, plus relative and in-page ones. `javascript:`,
+    /// `file:`, `data:` and other schemes are refused.
+    static func isAllowedLink(_ link: String) -> Bool { isWebOrMail(link) || !hasScheme(link) }
+
+    /// Inline images, or relative paths that stay inside the document's folder.
+    /// Remote images are refused so rendering never reaches the network.
+    static func isAllowedImage(_ source: String) -> Bool {
+        let path = normalized(source)
+        if path.lowercased().hasPrefix("data:image/") { return true }
+        return !path.isEmpty && !hasScheme(path) && !path.hasPrefix("/") && !path.hasPrefix("\\")
+            && !path.split(whereSeparator: { $0 == "/" || $0 == "\\" }).contains("..")
+    }
+}
+
 /// Serialises a `SemanticDocument` to HTML/XHTML and Markdown.
 enum DocumentSerializer {
     /// `imageSource` decides how images are referenced (data URI or file).
@@ -82,7 +111,7 @@ enum DocumentSerializer {
                 if run.italic { piece = "<em>\(piece)</em>" }
                 if run.underline { piece = "<u>\(piece)</u>" }
                 if run.strike { piece = "<s>\(piece)</s>" }
-                if let link = run.link { piece = "<a href=\"\(HTMLEscape.text(link))\">\(piece)</a>" }
+                if let link = run.link, SafeLink.isAllowedLink(link) { piece = "<a href=\"\(HTMLEscape.text(link))\">\(piece)</a>" }
                 result += piece
             }
         }
@@ -249,8 +278,6 @@ enum MarkdownRenderer {
         var s = HTMLEscape.text(text)
         let rules: [(String, String)] = [
             (#"`([^`]+)`"#, "<code>$1</code>"),
-            (#"!\[([^\]]*)\]\(([^)\s]+)[^)]*\)"#, "<img src=\"$2\" alt=\"$1\">"),
-            (#"\[([^\]]+)\]\(([^)\s]+)[^)]*\)"#, "<a href=\"$2\">$1</a>"),
             (#"\*\*\*([^*]+)\*\*\*"#, "<strong><em>$1</em></strong>"),
             (#"\*\*([^*]+)\*\*"#, "<strong>$1</strong>"),
             (#"__([^_]+)__"#, "<strong>$1</strong>"),
@@ -260,9 +287,33 @@ enum MarkdownRenderer {
             (#"~~([^~]+)~~"#, "<s>$1</s>"),
             (#"\\([\\`*_\[\]#+\-.!|])"#, "$1"),
         ]
-        for (pattern, template) in rules {
+        s = s.replacingOccurrences(of: rules[0].0, with: rules[0].1, options: .regularExpression)
+        s = links(in: s)
+        for (pattern, template) in rules.dropFirst() {
             s = s.replacingOccurrences(of: pattern, with: template, options: .regularExpression)
         }
         return s.replacingOccurrences(of: "  \n", with: "<br>").replacingOccurrences(of: "\n", with: " ")
+    }
+
+    /// Markdown images and links in already-escaped text. Targets that
+    /// `SafeLink` refuses keep only their visible text.
+    private static func links(in text: String) -> String {
+        guard let pattern = try? NSRegularExpression(pattern: #"(!?)\[([^\]]*)\]\(([^)\s]+)[^)]*\)"#) else { return text }
+        var result = "", cursor = text.startIndex
+        for match in pattern.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+            guard let whole = Range(match.range, in: text), let bang = Range(match.range(at: 1), in: text),
+                  let label = Range(match.range(at: 2), in: text), let target = Range(match.range(at: 3), in: text) else { continue }
+            result += text[cursor..<whole.lowerBound]
+            let (name, url) = (String(text[label]), String(text[target]))
+            if !text[bang].isEmpty {
+                result += SafeLink.isAllowedImage(url) ? "<img src=\"\(url)\" alt=\"\(name)\">" : name
+            } else if !name.isEmpty {
+                result += SafeLink.isAllowedLink(url) ? "<a href=\"\(url)\">\(name)</a>" : name
+            } else {
+                result += text[whole]
+            }
+            cursor = whole.upperBound
+        }
+        return result + text[cursor...]
     }
 }

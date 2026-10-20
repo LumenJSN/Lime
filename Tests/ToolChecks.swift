@@ -128,6 +128,21 @@ enum ToolChecks {
                 if error.localizedDescription.contains("unsafe"), !fm.fileExists(atPath: root.deletingLastPathComponent().appendingPathComponent("escaped.txt").path) { passed += 1; print("ok   unsafe archive rejected") }
                 else { failed.append("unsafe archive: \(error.localizedDescription)") }
             }
+            // Document packages must not keep symbolic links that point outside.
+            let linkDir = root.appendingPathComponent("linkpkg", isDirectory: true)
+            try fm.createDirectory(at: linkDir, withIntermediateDirectories: true)
+            try fm.createSymbolicLink(atPath: linkDir.appendingPathComponent("hosts").path, withDestinationPath: "/etc/hosts")
+            let linkZip = root.appendingPathComponent("linkpkg.zip")
+            _ = try await ProcessRunner.run(URL(fileURLWithPath: "/usr/bin/zip"), ["-yq", linkZip.path, "hosts"], directory: linkDir)
+            let unpacked = root.appendingPathComponent("linkpkg-out", isDirectory: true)
+            try await ZipPackage.extract(linkZip, to: unpacked)
+            if (try? fm.destinationOfSymbolicLink(atPath: unpacked.appendingPathComponent("hosts").path)) == nil { passed += 1; print("ok   package symlink removed") }
+            else { failed.append("package symlink kept") }
+            // A concat list disguised as a video must not pull in other local files.
+            let playlist = fx["mp3"]!.deletingLastPathComponent().appendingPathComponent("clip.mp4")
+            try "ffconcat version 1.0\nfile \(fx["mp3"]!.lastPathComponent)\n".write(to: playlist, atomically: true, encoding: .utf8)
+            let leaked = (try? await FFmpeg.probe(playlist)).map { $0.hasAudio || $0.hasVideo } ?? false
+            if !leaked { passed += 1; print("ok   playlist input refused") } else { failed.append("playlist input read a local file") }
             _ = duration
             // Extra tools: Copy Text (OCR, also on an image-only PDF) and Remove Background.
             let textImage = try renderTextImage(["Lime OCR 2026", "텍스트 인식 테스트"])

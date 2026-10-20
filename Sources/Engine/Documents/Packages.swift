@@ -14,10 +14,12 @@ enum ZipPackage {
         try await ProcessRunner.run(zip, ["-Xr9Dq", destination.path] + entries, directory: directory)
     }
 
-    /// Extracts with bsdtar, which refuses absolute and parent-relative members.
+    /// Extracts with bsdtar, which refuses absolute and parent-relative members,
+    /// then deletes any symbolic links so nothing can point outside the folder.
     static func extract(_ archive: URL, to directory: URL) async throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try await ProcessRunner.run(URL(fileURLWithPath: "/usr/bin/bsdtar"), ["-xf", archive.path, "-C", directory.path, "--no-same-owner"])
+        try PackagePath.removeSymlinks(in: directory)
     }
 
     static func write(_ files: [String: Data], to destination: URL, storedFirst: String? = nil, workspace: URL) async throws {
@@ -29,6 +31,28 @@ enum ZipPackage {
             try data.write(to: url)
         }
         try await create(from: root, to: destination, storedFirst: storedFirst)
+    }
+}
+
+/// Keeps paths read from inside a document package within that package.
+enum PackagePath {
+    /// `reference` resolved against `base` (or `root` when it starts with "/"),
+    /// or nil when it has a URL scheme or lands outside `root`.
+    static func contained(_ reference: String, from base: URL, in root: URL) -> URL? {
+        let path = reference.removingPercentEncoding ?? reference
+        guard !path.isEmpty, path.range(of: #"^[A-Za-z][A-Za-z0-9+.-]*:"#, options: .regularExpression) == nil else { return nil }
+        let start = path.hasPrefix("/") ? root : base
+        let candidate = start.appendingPathComponent(path).standardizedFileURL.resolvingSymlinksInPath()
+        let rootPath = root.standardizedFileURL.resolvingSymlinksInPath().path
+        return candidate.path.hasPrefix(rootPath.hasSuffix("/") ? rootPath : rootPath + "/") ? candidate : nil
+    }
+
+    static func removeSymlinks(in directory: URL) throws {
+        let fm = FileManager.default
+        guard let walker = fm.enumerator(at: directory, includingPropertiesForKeys: [.isSymbolicLinkKey]) else { return }
+        for case let url as URL in walker where (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true {
+            try fm.removeItem(at: url)
+        }
     }
 }
 
@@ -165,33 +189,64 @@ enum EPUBReader {
         guard let opfPath = try container.nodes(forXPath: "//*[local-name()='rootfile']/@full-path").first?.stringValue else {
             throw LimeError("Lime couldn't open the file.")
         }
-        let opfURL = root.appendingPathComponent(opfPath)
-        guard opfURL.standardizedFileURL.path.hasPrefix(root.standardizedFileURL.path) else { throw LimeError("A file inside the document points outside its package.") }
+        guard let opfURL = PackagePath.contained(opfPath, from: root, in: root) else { throw LimeError("A file inside the document points outside its package.") }
         let opf = try XMLDocument(contentsOf: opfURL, options: [])
         let base = opfURL.deletingLastPathComponent()
         var manifest: [String: String] = [:]
         for node in try opf.nodes(forXPath: "//*[local-name()='item']") {
             guard let element = node as? XMLElement, let id = element.attribute(forName: "id")?.stringValue,
                   let href = element.attribute(forName: "href")?.stringValue else { continue }
-            manifest[id] = href.removingPercentEncoding ?? href
+            manifest[id] = href
         }
         let title = try opf.nodes(forXPath: "//*[local-name()='title']").first?.stringValue ?? FormatCatalog.stem(of: url)
         var body = ""
         for node in try opf.nodes(forXPath: "//*[local-name()='itemref']/@idref") {
             guard let id = node.stringValue, let href = manifest[id] else { continue }
-            let chapter = base.appendingPathComponent(href).standardizedFileURL
-            guard chapter.path.hasPrefix(root.standardizedFileURL.path), let data = try? Data(contentsOf: chapter) else { continue }
+            guard let chapter = PackagePath.contained(href, from: base, in: root), let data = try? Data(contentsOf: chapter) else { continue }
             var html = String(decoding: data, as: UTF8.self)
             if let start = html.range(of: "<body", options: .caseInsensitive), let open = html[start.upperBound...].firstIndex(of: ">"),
                let end = html.range(of: "</body>", options: [.caseInsensitive, .backwards]) {
                 html = String(html[html.index(after: open)..<end.lowerBound])
             }
-            let folder = chapter.deletingLastPathComponent()
-            html = html.replacingOccurrences(of: #"(src|xlink:href)="(?!data:|https?:)([^"]+)""#, with: "$1=\"\(folder.absoluteString)$2\"", options: .regularExpression)
-            body += "<div class=\"chapter\">\n" + html + "\n</div>\n"
+            body += "<div class=\"chapter\">\n" + sanitize(html, folder: chapter.deletingLastPathComponent(), root: root) + "\n</div>\n"
         }
         guard !body.isEmpty else { throw LimeError("This document is blank.") }
         let html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>\(HTMLEscape.text(title))</title></head><body>\(body)</body></html>"
         return Book(html: html, baseURL: base, title: title)
+    }
+
+    /// Strips active and embedding elements, and points every resource at a
+    /// file inside the book. Remote and outside resources are dropped so
+    /// rendering never touches the network or other local files; links keep
+    /// only web, mail and in-book targets.
+    static func sanitize(_ html: String, folder: URL, root: URL) -> String {
+        var html = html.replacingOccurrences(of: #"<(script|iframe|object|embed|style)\b[^>]*>[\s\S]*?</\1\s*>"#,
+                                             with: "", options: [.regularExpression, .caseInsensitive])
+        html = html.replacingOccurrences(of: #"<(script|iframe|object|embed|style|link|meta|base)\b[^>]*>"#,
+                                         with: "", options: [.regularExpression, .caseInsensitive])
+        html = html.replacingOccurrences(of: #"\s(on\w+|srcset|poster|background)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)"#,
+                                         with: "", options: [.regularExpression, .caseInsensitive])
+        html = html.replacingOccurrences(of: #"\sstyle\s*=\s*("[^"]*url\([^"]*"|'[^']*url\([^']*')"#,
+                                         with: "", options: [.regularExpression, .caseInsensitive])
+        let attribute = #"\b(src|xlink:href|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))"#
+        guard let pattern = try? NSRegularExpression(pattern: attribute, options: .caseInsensitive) else { return html }
+        var result = "", cursor = html.startIndex
+        for match in pattern.matches(in: html, range: NSRange(html.startIndex..., in: html)) {
+            guard let whole = Range(match.range, in: html), let nameRange = Range(match.range(at: 1), in: html) else { continue }
+            let value = (2...4).lazy.compactMap { Range(match.range(at: $0), in: html) }.first.map { String(html[$0]) } ?? ""
+            let name = html[nameRange].lowercased()
+            result += html[cursor..<whole.lowerBound]
+            let safe: String
+            if name == "href", SafeLink.isWebOrMail(value) || value.hasPrefix("#") {
+                safe = value
+            } else if name != "href", value.lowercased().hasPrefix("data:image/") {
+                safe = value
+            } else {
+                safe = PackagePath.contained(value, from: folder, in: root)?.absoluteString ?? ""
+            }
+            result += "\(html[nameRange])=\"\(safe.replacingOccurrences(of: "\"", with: "&quot;"))\""
+            cursor = whole.upperBound
+        }
+        return result + html[cursor...]
     }
 }

@@ -50,7 +50,7 @@ enum AnimatedImage {
         try? FileManager.default.removeItem(at: output)
         try await FFmpeg.run(["-f", "concat", "-safe", "0", "-i", list.path, "-c:v", "libwebp_anim", "-lossless", "0",
                               "-quality", String(Int(quality * 100)), "-compression_level", "6", "-loop", "0",
-                              "-fps_mode", "vfr", output.path], duration: 0, context: nil)
+                              "-fps_mode", "vfr", output.path], duration: 0, context: nil, trustedInputs: true)
         return ImageTools.fileSize(output)
     }
 
