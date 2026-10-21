@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/version-1.0-65a30d.svg?variant=default&amp;size=sm&amp;logo=lu:Citrus&amp;logoColor=ffffff&amp;mode=dark" /><img alt="version 1.0" src="https://shieldcn.dev/badge/version-1.0-65a30d.svg?variant=default&amp;size=sm&amp;logo=lu:Citrus&amp;logoColor=ffffff&amp;mode=light" /></picture>
+  <a href="https://github.com/LumenJSN/Lime/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/github/release/LumenJSN/Lime.svg?variant=default&amp;size=sm&amp;color=65a30d&amp;logo=lu:Citrus&amp;logoColor=ffffff&amp;label=release&amp;mode=dark" /><img alt="latest release" src="https://shieldcn.dev/github/release/LumenJSN/Lime.svg?variant=default&amp;size=sm&amp;color=65a30d&amp;logo=lu:Citrus&amp;logoColor=ffffff&amp;label=release&amp;mode=light" /></picture></a>
   <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/macOS-13%2B_Apple_silicon.svg?logo=apple&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="macOS 13+ on Apple silicon" src="https://shieldcn.dev/badge/macOS-13%2B_Apple_silicon.svg?logo=apple&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture>
   <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/Swift-6.svg?logo=swift&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="Swift 6" src="https://shieldcn.dev/badge/Swift-6.svg?logo=swift&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture>
   <a href="#features"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/conversions-269_routes.svg?logo=lu:Repeat&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="269 conversion routes" src="https://shieldcn.dev/badge/conversions-269_routes.svg?logo=lu:Repeat&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture></a>
@@ -89,9 +89,3 @@ FFmpeg (LGPL), LAME, Opus, Vorbis, libvpx and libwebp are built from public sour
 ## Icon
 
 Redraw it with `swift Scripts/MakeIcon.swift <folder>.iconset && iconutil -c icns <folder>.iconset -o Resources/AppIcon.icns`.
-
-<p align="center">
-  <a href="https://www.trymacapps.com" target="_blank" rel="noopener">
-    <img src="https://www.trymacapps.com/badge.png" alt="Featured on TryMacApps" width="200" height="67" />
-  </a>
-</p>
