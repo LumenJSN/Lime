@@ -6,6 +6,14 @@
     <description>Lime updates</description>
     <language>en</language>
     <item>
+      <title>1.1.1</title>
+      <sparkle:version>1.1.1</sparkle:version>
+      <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <pubDate>Wed, 21 Oct 2026 06:03:28 +0000</pubDate>
+      <enclosure url="https://github.com/LumenJSN/Lime/releases/download/v1.1.1/Lime-1.1.1-arm64.zip" sparkle:edSignature="Vy7Lwmwavb8vMt0jwSnG/dRhakBB83PluhilwmkaO/0qLXXI3b2vkA+FbY34c4J3A+YXMRFJrujtr3NKnDDmAw==" length="28047418" type="application/octet-stream"/>
+    </item>
+    <item>
       <title>1.1.0</title>
       <sparkle:version>1.1.0</sparkle:version>
       <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
