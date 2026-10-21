@@ -26,7 +26,7 @@ A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to co
 ## Getting started
 
 1. Quit any other app that uses the same drag shortcuts, or the wheels will clash.
-2. Open `../Lime.app`. A welcome window appears on first launch; after that, settings live in the menu-bar icon.
+2. Open Lime (see [Install](#install)). A welcome window appears on first launch; after that, settings live in the menu-bar icon.
 3. While dragging files in Finder, tap a key once:
    - **⇧ Shift**: convert wheel
    - **⌘ Command**: tools wheel
@@ -34,7 +34,25 @@ A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to co
 4. The wheel stays up after you let go of the key. Drop on a petal to run it; drop in the centre or outside to cancel. Tap another key while the wheel is up to switch to that wheel.
 5. Results are saved next to the original as `name.ext`. Tool results get a tag in parentheses, like `name (compressed).jpg`, and become `name (compressed) 2.jpg` if that name is taken. The original is never touched.
 
-Requires Apple silicon and macOS 13 or later. Builds are ad-hoc signed locally, so the first launch may need right-click → Open.
+## Install
+
+Requires Apple silicon and macOS 13 or later.
+
+1. Download `Lime-1.0.0-arm64.zip` from [Releases](https://github.com/LumenJSN/Lime/releases/latest) and unzip it.
+2. Move `Lime.app` to `/Applications`.
+3. Open it.
+
+Lime is not notarized by Apple, so macOS may refuse to open it the first time ("Lime is damaged" or "Apple could not verify Lime"). Allow it in one of these ways, then open it again:
+
+- **Terminal**: clear the download quarantine flag.
+
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/Lime.app
+  ```
+
+- **System Settings**: after the warning, go to Privacy & Security, scroll down and click **Open Anyway** next to the Lime message. On macOS 14 and earlier, right-click `Lime.app` → **Open** also works.
+
+Only do this for a copy you downloaded from this repository's Releases page. Each zip's SHA-256 is listed in the release's `SHA256SUMS.txt`.
 
 ## Features
 
@@ -66,7 +84,7 @@ Lime never launches Pages, Keynote, Numbers, Word, PowerPoint or Excel.
 ./test.sh    # 340 interaction checks, 269 conversion routes, 55 tool checks
 ```
 
-FFmpeg (LGPL), LAME, Opus, Vorbis, libvpx and libwebp are built from public sources by `Scripts/BuildMediaTools.sh`. Their licences are in `Resources/Licenses`. `Lime.app --render <folder>` draws the wheels, settings and editor windows as PNGs.
+FFmpeg (LGPL), LAME, Opus, Vorbis, libvpx and libwebp are built from public sources by `Scripts/BuildMediaTools.sh`. Their licences are in `Resources/Licenses` (and inside the app). Each release also attaches the exact FFmpeg and LAME source archives it was built from. `Lime.app --render <folder>` draws the wheels, settings and editor windows as PNGs.
 
 ## Icon
 
