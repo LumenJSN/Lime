@@ -16,11 +16,7 @@ A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to co
 
 </div>
 
-<p align="center">
-  <img src="Screenshots/promo.gif" width="720" alt="Lime in 20 seconds: tap Shift to convert, Command for tools, Control for actions" />
-</p>
-
-<p align="center"><a href="Screenshots/promo.mp4">▶ Watch with sound (MP4, 1080p)</a></p>
+https://github.com/user-attachments/assets/8ce723b8-36de-47f4-a42a-53704dbc610e
 
 ## Getting started
 
