@@ -5,7 +5,11 @@ import PDFKit
 /// Photo tools: compress, edit, annotate, add background, crop, redact,
 /// collage, create PDF and QR reading.
 enum ImageTools {
-    static func fileSize(_ url: URL) -> Int { (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0 }
+    /// Size on disk right now. `URL.resourceValues` caches its first answer, so
+    /// re-encoding to the same URL would keep reporting the first attempt's size.
+    static func fileSize(_ url: URL) -> Int {
+        ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? Int) ?? 0
+    }
 
     // MARK: Compress
 

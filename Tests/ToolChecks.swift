@@ -41,7 +41,19 @@ enum ToolChecks {
             let (jpg, png, png2, wav, mp3, mp4, mp4b, pdf, zip) = (fx["jpg"]!, fx["png"]!, fx["png2"]!, fx["wav"]!, fx["mp3"]!, fx["mp4"]!, fx["mp4b"]!, fx["pdf"]!, fx["zip"]!)
             func duration(_ url: URL) async -> Double { (try? await FFmpeg.probe(url).duration) ?? 0 }
             await check("compress jpg preset", .compress, [jpg]) { $0.sizeGoal = .preset }
-            await check("compress jpg target", .compress, [jpg]) { $0.sizeGoal = .percentage; $0.shrinkPercent = 30 }
+            // Target modes must land at or under the promised size.
+            func bytes(_ url: URL) -> Int { ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? Int) ?? 0 }
+            func within(_ source: URL, percent: Double) -> ([URL]) throws -> Void {
+                { r in
+                    let limit = Int(Double(bytes(source)) * (1 - percent / 100))
+                    guard bytes(r[0]) <= limit else { throw LimeError("\(bytes(r[0])) bytes, over the \(limit)-byte target") }
+                }
+            }
+            await check("compress jpg target", .compress, [jpg], { $0.sizeGoal = .percentage; $0.shrinkPercent = 30 }, verify: within(jpg, percent: 30))
+            let heic = root.appendingPathComponent("photo.heic")
+            try await ImageIOKit.write(ImageIOKit.load(jpg), to: heic, format: "heic", quality: 0.95, metadata: [:])
+            await check("compress heic by half", .compress, [heic], { $0.sizeGoal = .percentage; $0.shrinkPercent = 50 }, verify: within(heic, percent: 50))
+            await check("compress jpg by half", .compress, [jpg], { $0.sizeGoal = .percentage; $0.shrinkPercent = 50 }, verify: within(jpg, percent: 50))
             await check("compress png", .compress, [png]) { $0.sizeGoal = .preset }
             await check("compress wav→flac", .compress, [wav]) { $0.sizeGoal = .preset } verify: { r in guard r[0].pathExtension == "flac" else { throw LimeError("expected flac") } }
             await check("compress mp3", .compress, [mp3]) { $0.sizeGoal = .preset }
