@@ -20,6 +20,8 @@ A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to co
   <img src="Screenshots/promo.gif" width="720" alt="Lime in 20 seconds: tap Shift to convert, Command for tools, Control for actions" />
 </p>
 
+<p align="center"><a href="Screenshots/promo.mp4">▶ Watch with sound (MP4, 1080p)</a></p>
+
 ## Getting started
 
 1. Quit any other app that uses the same drag shortcuts, or the wheels will clash.
