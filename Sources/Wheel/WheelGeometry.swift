@@ -69,19 +69,19 @@ struct WheelGeometry: Sendable {
         return path
     }
 
-    /// Petal under an offset, or nil for the hole, outside the ring and gutters.
+    /// How far past the petal tips the pointer still selects.
+    let reach: CGFloat = 24
+
+    /// Petal in the direction of an offset, or nil over the hub (cancel) or
+    /// well outside the wheel. Gutters and the band just inside or outside
+    /// the petals count too, so the pointer never has to land exactly.
     func hit(_ offset: CGPoint, count: Int) -> Int? {
         let radius = hypot(offset.x, offset.y)
-        guard count > 0, radius >= inner, radius <= outer else { return nil }
+        guard count > 0, radius >= hole, radius <= outer + reach else { return nil }
         guard count > 1 else { return 0 }
         let step = 2 * .pi / CGFloat(count)
         var heading = atan2(offset.x, -offset.y)
         if heading < 0 { heading += 2 * .pi }
-        let index = Int((heading + step / 2) / step) % count
-        var delta = heading - bearing(index, of: count)
-        if delta > .pi { delta -= 2 * .pi }
-        // Distance from the point to the nearest sector edge must clear half a gutter.
-        let edgeDistance = radius * sin(step / 2 - abs(delta))
-        return edgeDistance >= gap / 2 ? index : nil
+        return Int((heading + step / 2) / step) % count
     }
 }

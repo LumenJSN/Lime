@@ -84,7 +84,7 @@ expect(!MarkdownRenderer.inline("![a](%2e%2e/secret.png)").contains("<img") && !
         for count in 1...10 {
             for index in 0..<count {
                 let a = g.bearing(index, of: count)
-                for radius: CGFloat in [58, 90, 124] {
+                for radius: CGFloat in [50, 58, 90, 124, 145] {
                     let p = g.point(radius: radius, bearing: a)
                     expect(g.hit(p, count: count) == index, "\(count)-item sector \(index) at \(radius)")
                 }
@@ -99,7 +99,9 @@ expect(!MarkdownRenderer.inline("![a](%2e%2e/secret.png)").contains("<img") && !
         expect(g.hit(CGPoint(x: 0, y: -100), count: 4) == 0, "north is first (y-down)")
         expect(g.hit(CGPoint(x: 100, y: 0), count: 4) == 1, "clockwise second is east")
         expect(g.hit(CGPoint(x: 0, y: -100), count: 3) == 0, "three items also start north")
-        expect(g.hit(CGPoint(x: 70.7, y: -70.7), count: 4) == nil, "4-item gutter")
+        expect(g.hit(CGPoint(x: 69, y: -72), count: 4) == 0 && g.hit(CGPoint(x: 72, y: -69), count: 4) == 1, "a gutter picks the nearer petal")
+        expect(g.hit(CGPoint(x: 0, y: -44), count: 4) == nil, "the hub cancels")
+        expect(g.hit(CGPoint(x: 0, y: -150), count: 4) == 0, "a little past the petals still selects")
         expect(g.hit(CGPoint(x: 0, y: 100), count: 1) == 0, "single item ring selectable")
 
         // MARK: Controller hover/commit
