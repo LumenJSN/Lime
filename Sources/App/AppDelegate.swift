@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             RenderHarness.run(delegate: self, directory: URL(fileURLWithPath: arguments[index + 1], isDirectory: true))
             return
         }
+        Updates.shared.start()
         if !settings.welcomeCompleted || arguments.contains("--welcome") { showWelcome() }
     }
 
@@ -69,6 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func toggleMonitoring() { settings.monitoring.toggle() }
+
+    @objc func checkForUpdates() { Updates.shared.checkNow() }
 
     /// Opens the wheel at the pointer for files chosen in an open panel.
     @objc func chooseFiles() {
@@ -112,6 +115,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         welcome.target = delegate
         let prefs = menu.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings), keyEquivalent: ",")
         prefs.target = delegate
+        let updates = menu.addItem(withTitle: "Check for Updates…", action: #selector(AppDelegate.checkForUpdates), keyEquivalent: "")
+        updates.target = delegate
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Lime", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu

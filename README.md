@@ -38,7 +38,7 @@ A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to co
 
 Requires Apple silicon and macOS 13 or later.
 
-1. Download `Lime-1.0.0-arm64.zip` from [Releases](https://github.com/LumenJSN/Lime/releases/latest) and unzip it.
+1. Download the latest `Lime-<version>-arm64.zip` from [Releases](https://github.com/LumenJSN/Lime/releases/latest) and unzip it.
 2. Move `Lime.app` to `/Applications`.
 3. Open it.
 
@@ -53,6 +53,10 @@ Lime is not notarized by Apple, so macOS may refuse to open it the first time ("
 - **System Settings**: after the warning, go to Privacy & Security, scroll down and click **Open Anyway** next to the Lime message. On macOS 14 and earlier, right-click `Lime.app` → **Open** also works.
 
 Only do this for a copy you downloaded from this repository's Releases page. Each zip's SHA-256 is listed in the release's `SHA256SUMS.txt`.
+
+### Updates
+
+From 1.1.0 on, Lime checks for a new version once a day with [Sparkle](https://sparkle-project.org) and asks before installing it. Use **Check for Updates…** in the menu-bar menu to check now, or turn on **Install updates automatically** in Settings › About Lime. Every update is verified against Lime's EdDSA signature, so a tampered download is refused. Version 1.0.0 has no updater; download 1.1.0 once by hand.
 
 ## Features
 
@@ -80,8 +84,9 @@ Lime never launches Pages, Keynote, Numbers, Word, PowerPoint or Excel.
 
 ```sh
 ./Scripts/BuildMediaTools.sh   # once: builds ffmpeg/ffprobe from public sources into Resources/Tools
-./build.sh   # produces ../Lime.app
-./test.sh    # 340 interaction checks, 269 conversion routes, 55 tool checks
+./build.sh   # produces ../Lime.app (fetches the pinned Sparkle release into .deps on first run)
+./test.sh    # 349 interaction checks, 269 conversion routes, 55 tool checks
+./Scripts/Release.sh   # ad-hoc signed zip, sources, checksums and a signed appcast item in ../dist/<version>
 ```
 
 FFmpeg (LGPL), LAME, Opus, Vorbis, libvpx and libwebp are built from public sources by `Scripts/BuildMediaTools.sh`. Their licences are in `Resources/Licenses` (and inside the app). Each release also attaches the exact FFmpeg and LAME source archives it was built from. `Lime.app --render <folder>` draws the wheels, settings and editor windows as PNGs.

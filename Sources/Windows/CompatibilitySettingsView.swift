@@ -148,6 +148,7 @@ struct FolderSettings: View {
 }
 
 struct AboutSettings: View {
+    @ObservedObject private var updates = Updates.shared
     private var version: String {
         let info = Bundle.main.infoDictionary ?? [:]
         return "Version \(info["CFBundleShortVersionString"] as? String ?? "1.0") (\(info["CFBundleVersion"] as? String ?? "1"))"
@@ -164,6 +165,12 @@ struct AboutSettings: View {
                 if let url = Bundle.main.resourceURL?.appendingPathComponent("Licenses") { NSWorkspace.shared.open(url) }
             }
             .buttonStyle(.link).font(.system(size: 13)).padding(.top, 18)
+            if updates.available {
+                Button("Check for Updates…") { updates.checkNow() }.padding(.top, 22)
+                Toggle("Install updates automatically", isOn: Binding(get: { updates.installsAutomatically },
+                                                                     set: { updates.installsAutomatically = $0 }))
+                    .font(.system(size: 13)).padding(.top, 10)
+            }
             Spacer()
             Spacer().frame(height: 40)
         }
