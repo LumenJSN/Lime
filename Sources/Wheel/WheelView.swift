@@ -176,6 +176,10 @@ struct PetalShape: Shape {
     }
 }
 
+/// Fill that makes a transparent window's pixels receive mouse and drag
+/// events: about one 8-bit step, too faint to see even over white.
+enum HitCatcher { static let alpha = 0.005 }
+
 /// See-through backdrop that blurs whatever sits behind it, so file names
 /// underneath never compete with the labels: Liquid Glass when chosen and
 /// available (macOS 26 and later), a behind-window blur otherwise.
@@ -187,7 +191,10 @@ struct GlassBackdrop<S: Shape>: View {
     var material: NSVisualEffectView.Material = .hudWindow
     var body: some View {
         if liquid, #available(macOS 26.0, *) {
-            Color.clear.glassEffect(.regular, in: shape).overlay(shape.fill(tint))
+            // Glass alone leaves the window's pixels transparent, which lets
+            // clicks and drags fall through to the window below.
+            shape.fill(Color.black.opacity(HitCatcher.alpha))
+                .glassEffect(.regular, in: shape).overlay(shape.fill(tint))
         } else {
             VisualEffectBlur(material: material).clipShape(shape).overlay(shape.fill(tint))
         }

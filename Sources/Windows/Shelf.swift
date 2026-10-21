@@ -49,7 +49,9 @@ struct ShelfView: View {
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(model.dropTargeted ? Color(nsColor: Brand.accent) : Color.primary.opacity(0.1), lineWidth: model.dropTargeted ? 2 : 0.5))
             .padding(.top, 14)
-            ShelfTab().frame(maxWidth: .infinity).padding(.top, 9).allowsHitTesting(false)
+            ShelfTab().padding(.horizontal, 10).padding(.vertical, 6)
+                .background(WindowDragHandle())
+                .frame(maxWidth: .infinity).padding(.top, 3)
         }
         .padding(8)
         .onDrop(of: [UTType.fileURL], isTargeted: $model.dropTargeted) { providers in
@@ -89,6 +91,7 @@ struct ShelfView: View {
             headerButton("xmark", help: "Close shelf (files stay where they are)") { model.onClose?() }
         }
         .padding(.leading, 52).padding(.trailing, 10).padding(.vertical, 9)
+        .background(WindowDragHandle())
     }
 
     private func headerButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
@@ -224,6 +227,23 @@ struct Thumbnail: View {
     }
 }
 
+
+/// Moves the shelf when its header or tab is dragged. SwiftUI content does
+/// not count as window background, so `isMovableByWindowBackground` alone
+/// never moved the card.
+struct WindowDragHandle: NSViewRepresentable {
+    func makeNSView(context: Context) -> HandleView { HandleView() }
+    func updateNSView(_ view: HandleView, context: Context) {}
+
+    final class HandleView: NSView {
+        override var mouseDownCanMoveWindow: Bool { true }
+        override func mouseDown(with event: NSEvent) {
+            guard let window else { return }
+            window.performDrag(with: event)
+            (window as? FloatPanel)?.onDragFinished?()
+        }
+    }
+}
 
 /// AppKit drag source so several files leave the card in one drag.
 struct DraggedFiles: NSViewRepresentable {

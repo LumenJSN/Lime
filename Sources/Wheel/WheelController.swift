@@ -21,6 +21,16 @@ final class WheelDropZone: NSView {
     override var acceptsFirstResponder: Bool { true }
     override var isFlipped: Bool { true }
 
+    /// The window server hands drags over fully transparent pixels to the
+    /// window underneath, so the whole area that selects a petal (gutters and
+    /// the band past the tips included) gets a fill too faint to see.
+    override func draw(_ dirtyRect: NSRect) {
+        guard let geometry = controller?.model.geometry else { return }
+        let radius = geometry.outer + geometry.reach
+        NSColor.black.withAlphaComponent(HitCatcher.alpha).setFill()
+        NSBezierPath(ovalIn: NSRect(x: bounds.midX - radius, y: bounds.midY - radius, width: radius * 2, height: radius * 2)).fill()
+    }
+
     private var offsetFromCenter: (NSPoint) -> CGPoint {
         { [unowned self] p in CGPoint(x: p.x - bounds.midX, y: p.y - bounds.midY) }
     }
