@@ -67,7 +67,7 @@ From 1.1.0 on, Lime checks for a new version once a day with [Sparkle](https://s
   - **COPY TEXT**: recognises text in images, GIFs and PDFs on-device (Korean, English, Japanese, Chinese), copies it straight to the clipboard and shows a result window. PDFs with a text layer use it; only scanned pages are OCR'd. Saving produces `name (text).txt`. Works on several files at once.
   - **REMOVE BG**: finds the person, animal or object in a photo and makes a transparent PNG without the background (`name (no background).png`). Needs macOS 14 or later.
 - **6 actions**: Shelf, Copy, Move, AirDrop, Copy Path and Terminal (opens Terminal or iTerm2).
-- **Shelf**: a holding card with a lime tab on top. Icon and list views, drag on empty space to select several, drag many files out at once, drop files in to add them, collapse, snap to screen edges, and Space for Quick Look.
+- **Shelf**: a holding card with a lime tab on top. Drag it by its header, tab or edges to move it. Icon and list views, drag on empty space to select several, drag many files out at once, drop files in to add them, collapse, snap to screen edges, and Space for Quick Look.
 - **Settings**: Basics (Liquid Glass/Frosted/Solid style — Liquid Glass on macOS 26 and later, launch at login, sound and haptics, key combo per wheel, Shelf behaviour, terminal app), Outputs (per-format quality, metadata, bit depth, compression, maximum video height, EPUB/Office layout), Conversions (format table), Access (save location, folder permissions) and About Lime.
 - Progress cards, cancel, and click when finished to reveal in Finder.
 

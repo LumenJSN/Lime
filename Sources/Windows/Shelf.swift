@@ -12,6 +12,10 @@ final class ShelfModel: ObservableObject {
     @Published var shelfLayoutMode: ShelfLayout = .icons
     @Published var collapsed = false
     @Published var dropTargeted = false
+    /// Areas that handle the mouse themselves (files, header buttons, the
+    /// pile), in the hosting view's top-left coordinates. Everywhere else on
+    /// the card moves the shelf.
+    var fixedAreas: [CGRect] = []
     var onClose: (() -> Void)?
     var onResize: (() -> Void)?
 
@@ -37,6 +41,9 @@ struct ShelfView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
+            // The strip above the card, where the tab sits, is a grab handle
+            // too; an invisible fill keeps the window from passing presses on.
+            Color.black.opacity(HitCatcher.alpha).frame(height: 30)
             VStack(spacing: 0) {
                 header
                 if !model.collapsed {
@@ -49,11 +56,11 @@ struct ShelfView: View {
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(model.dropTargeted ? Color(nsColor: Brand.accent) : Color.primary.opacity(0.1), lineWidth: model.dropTargeted ? 2 : 0.5))
             .padding(.top, 14)
-            ShelfTab().padding(.horizontal, 10).padding(.vertical, 6)
-                .background(WindowDragHandle())
-                .frame(maxWidth: .infinity).padding(.top, 3)
+            ShelfTab().frame(maxWidth: .infinity).padding(.top, 9).allowsHitTesting(false)
         }
         .padding(8)
+        .coordinateSpace(name: ShelfFixedAreas.space)
+        .onPreferenceChange(ShelfFixedAreas.self) { model.fixedAreas = $0 }
         .onDrop(of: [UTType.fileURL], isTargeted: $model.dropTargeted) { providers in
             Task { @MainActor in
                 var urls: [URL] = []
@@ -74,6 +81,7 @@ struct ShelfView: View {
         HStack(spacing: 8) {
             PileThumb(items: Array(model.items.prefix(3))).frame(width: 34, height: 30)
                 .overlay(DraggedFiles(urls: { model.dragItems }))
+                .fixedArea()
             VStack(alignment: .leading, spacing: 1) {
                 Text(model.items.count == 1 ? model.items[0].lastPathComponent : "\(model.items.count) items")
                     .font(.system(size: 12, weight: .semibold)).lineLimit(1).truncationMode(.middle)
@@ -91,14 +99,13 @@ struct ShelfView: View {
             headerButton("xmark", help: "Close shelf (files stay where they are)") { model.onClose?() }
         }
         .padding(.leading, 52).padding(.trailing, 10).padding(.vertical, 9)
-        .background(WindowDragHandle())
     }
 
     private func headerButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
                 .frame(width: 20, height: 20).background(Circle().fill(Color.primary.opacity(0.06)))
-        }.buttonStyle(.plain).help(help)
+        }.buttonStyle(.plain).help(help).fixedArea()
     }
 
     @ViewBuilder private var content: some View {
@@ -135,6 +142,8 @@ struct ShelfView: View {
             .accessibilityLabel("Shelf items. Drag on empty space to pick several.")
         }
         .frame(maxHeight: Self.contentHeight)
+        // An 8 pt rim stays free so the card's edges move it too.
+        .fixedArea(rim: 8)
     }
 
     private static let contentHeight: CGFloat = 320
@@ -228,20 +237,22 @@ struct Thumbnail: View {
 }
 
 
-/// Moves the shelf when its header or tab is dragged. SwiftUI content does
-/// not count as window background, so `isMovableByWindowBackground` alone
-/// never moved the card.
-struct WindowDragHandle: NSViewRepresentable {
-    func makeNSView(context: Context) -> HandleView { HandleView() }
-    func updateNSView(_ view: HandleView, context: Context) {}
+/// Collects the frames of `fixedArea()` views for `FloatPanel`.
+struct ShelfFixedAreas: PreferenceKey {
+    static let space = "shelfCard"
+    static let defaultValue: [CGRect] = []
+    static func reduce(value: inout [CGRect], nextValue: () -> [CGRect]) { value += nextValue() }
+}
 
-    final class HandleView: NSView {
-        override var mouseDownCanMoveWindow: Bool { true }
-        override func mouseDown(with event: NSEvent) {
-            guard let window else { return }
-            window.performDrag(with: event)
-            (window as? FloatPanel)?.onDragFinished?()
-        }
+extension View {
+    /// Marks a view that keeps its own clicks and drags instead of moving
+    /// the shelf, less a `rim` along its sides and bottom.
+    func fixedArea(rim: CGFloat = 0) -> some View {
+        background(GeometryReader { geo in
+            let frame = geo.frame(in: .named(ShelfFixedAreas.space))
+            let kept = CGRect(x: frame.minX + rim, y: frame.minY, width: frame.width - rim * 2, height: frame.height - rim)
+            Color.clear.preference(key: ShelfFixedAreas.self, value: [kept])
+        })
     }
 }
 
@@ -386,9 +397,43 @@ final class FloatPanel: NSPanel {
     var onDragFinished: (() -> Void)?
     override var canBecomeKey: Bool { true }
     override func mouseUp(with event: NSEvent) { super.mouseUp(with: event); onDragFinished?() }
+    /// SwiftUI content never counts as window background, so
+    /// `isMovableByWindowBackground` alone cannot move the card. A press
+    /// anywhere outside the files, buttons and pile drags the shelf instead.
     override func sendEvent(_ event: NSEvent) {
+        switch event.type {
+        case .leftMouseDown where startsMove(event):
+            move = (NSEvent.mouseLocation, frame.origin)
+            return
+        case .leftMouseDragged where move != nil:
+            followPointer()
+            return
+        case .leftMouseUp where move != nil:
+            followPointer()
+            move = nil
+            onDragFinished?()
+            return
+        default:
+            break
+        }
         super.sendEvent(event)
         if event.type == .leftMouseUp { onDragFinished?() }
+    }
+
+    /// Pointer and window origin when a move began.
+    private var move: (mouse: NSPoint, origin: NSPoint)?
+
+    private func followPointer() {
+        guard let move else { return }
+        let mouse = NSEvent.mouseLocation
+        setFrameOrigin(NSPoint(x: move.origin.x + mouse.x - move.mouse.x, y: move.origin.y + mouse.y - move.mouse.y))
+    }
+
+    private func startsMove(_ event: NSEvent) -> Bool {
+        guard let host = contentView as? FirstMouseHostingView<ShelfView> else { return false }
+        var point = host.convert(event.locationInWindow, from: nil)
+        if !host.isFlipped { point.y = host.bounds.height - point.y }
+        return !host.rootView.model.fixedAreas.contains { $0.contains(point) }
     }
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 49, let view = contentView as? FirstMouseHostingView<ShelfView> {
