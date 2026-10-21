@@ -45,13 +45,35 @@ enum ShellApp: String, CaseIterable {
     var name: String { self == .terminal ? "Terminal" : "iTerm2" }
 }
 
+/// Look of the wheel and the shelf. Liquid Glass needs macOS 26; Frosted is
+/// the blur older systems get, and Solid is opaque.
+enum SurfaceStyle: String, CaseIterable, Sendable {
+    case liquid, frosted, solid
+    static var liquidAvailable: Bool {
+        if #available(macOS 26.0, *) { return true }
+        return false
+    }
+    static var standard: SurfaceStyle { liquidAvailable ? .liquid : .frosted }
+    var title: String {
+        switch self {
+        case .liquid: "Liquid Glass"
+        case .frosted: "Frosted"
+        case .solid: "Solid"
+        }
+    }
+    /// Choices offered in Settings on this Mac.
+    static var offered: [SurfaceStyle] { liquidAvailable ? allCases : [.frosted, .solid] }
+}
+
 /// Persisted preferences (`LimeSettingsModel`).
 @MainActor
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
     private let defaults: UserDefaults
 
-    @Published var glass: Bool { didSet { defaults.set(glass, forKey: "glass"); NotificationCenter.default.post(name: .wheelThemeDidChange, object: nil) } }
+    @Published var surface: SurfaceStyle { didSet { defaults.set(surface.rawValue, forKey: "surface"); NotificationCenter.default.post(name: .wheelThemeDidChange, object: nil) } }
+    /// See-through styles; Solid is the only opaque one.
+    var glass: Bool { surface != .solid }
     @Published var feedback: Bool { didSet { defaults.set(feedback, forKey: "feedback") } }
     @Published var monitoring: Bool { didSet { defaults.set(monitoring, forKey: "monitoring") } }
     /// Grab Text and Cut Out Subject in the tools wheel.
@@ -76,7 +98,10 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         defaults.register(defaults: ["glass": true, "feedback": true, "monitoring": true, "extraTools": true, "shelfDropRule": ShelfDropRule.newShelf.rawValue,
                                      "terminal": ShellApp.terminal.rawValue, "welcomeCompleted": false])
-        glass = defaults.bool(forKey: "glass")
+        // Older builds stored a Glass/Solid switch under "glass".
+        let stored = defaults.string(forKey: "surface").flatMap(SurfaceStyle.init(rawValue:))
+            ?? (defaults.bool(forKey: "glass") ? SurfaceStyle.standard : .solid)
+        surface = stored == .liquid && !SurfaceStyle.liquidAvailable ? .frosted : stored
         feedback = defaults.bool(forKey: "feedback")
         monitoring = defaults.bool(forKey: "monitoring")
         extraTools = defaults.bool(forKey: "extraTools")

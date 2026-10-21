@@ -38,7 +38,7 @@ enum RenderHarness {
         jobs.append(("progress", AnyView(OperationProgressView(model: progress)), CGSize(width: 290, height: 80), 0.3))
         let shelf = ShelfModel()
         shelf.items = [photo, audio]
-        jobs.append(("shelf", AnyView(ShelfView(model: shelf)), CGSize(width: 320, height: 300), 1.0))
+        jobs.append(("shelf", AnyView(ShelfView(model: shelf, settings: settings)), CGSize(width: 320, height: 300), 1.0))
         for tool in [LimeTool.compress, .adjustPhoto, .markUpPhoto, .addBackdrop, .cropPhoto, .maskPhoto, .stripTags] {
             let model = ToolEditorModel(tool: tool, files: [photo], settings: settings)
             if tool == .markUpPhoto {

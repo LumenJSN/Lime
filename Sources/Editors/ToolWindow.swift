@@ -80,7 +80,7 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
         let fits = Self.fitsContent(model.tool)
         if fits { size.height = Self.contentHeight(model: model, width: size.width) }
         // Windows keep the size set here; content never resizes them on its own.
-        let host = FirstMouseHostingView(rootView: root.frame(width: size.width).frame(maxHeight: .infinity))
+        let host = FirstMouseHostingView(rootView: root.frame(width: size.width).frame(maxHeight: .infinity).ignoresSafeArea(.container, edges: .top))
         host.sizingOptions = []
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
         window.titlebarAppearsTransparent = true
@@ -93,10 +93,6 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
         window.contentView = host
         window.delegate = self
         window.level = .floating
-        if fits {
-            size.height += Self.titleBarInset(window)
-            window.setContentSize(size)
-        }
         if let screen = NSScreen.screens.first(where: { NSMouseInRect(point, $0.frame, false) }) ?? NSScreen.main {
             let f = screen.visibleFrame
             let origin = NSPoint(x: min(max(point.x - size.width / 2, f.minX), f.maxX - size.width), y: min(max(point.y - size.height / 2, f.minY), f.maxY - size.height))
@@ -122,17 +118,11 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
         return ceil(probe.fittingSize.height)
     }
 
-    /// Height of the hidden title bar. SwiftUI lays the content out below it,
-    /// so a window sized to its content needs this much more.
-    static func titleBarInset(_ window: NSWindow) -> CGFloat {
-        window.frame.height - window.contentLayoutRect.height
-    }
-
     /// Resizes the window to its content, keeping the title bar in place
     /// unless that would push the bottom off screen.
     private func fitHeight() {
         guard let window else { return }
-        let height = Self.contentHeight(model: model, width: window.frame.width) + Self.titleBarInset(window)
+        let height = Self.contentHeight(model: model, width: window.frame.width)
         var frame = window.frame
         frame.origin.y = frame.maxY - height
         frame.size.height = height
@@ -145,27 +135,27 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
     /// Window size per tool, roomy enough for its controls.
     static func size(for tool: LimeTool) -> NSSize {
         switch tool {
-        case .compress: NSSize(width: 400, height: 399)
-        case .stripTags: NSSize(width: 500, height: 564)
-        case .adjustPhoto: NSSize(width: 500, height: 811)
-        case .markUpPhoto: NSSize(width: 460, height: 752)
-        case .addBackdrop: NSSize(width: 460, height: 674)
-        case .cropPhoto: NSSize(width: 420, height: 629)
-        case .maskPhoto: NSSize(width: 420, height: 765)
-        case .levelAudio: NSSize(width: 420, height: 635)
-        case .waveVideo: NSSize(width: 420, height: 655)
-        case .cutAudio: NSSize(width: 420, height: 360)
-        case .remixChannels, .censorAudio: NSSize(width: 420, height: 424)
-        case .cutVideo: NSSize(width: 420, height: 706)
-        case .cropClip: NSSize(width: 420, height: 687)
-        case .retimeVideo: NSSize(width: 420, height: 694)
-        case .grabFrames: NSSize(width: 420, height: 700)
-        case .sliceVideo: NSSize(width: 420, height: 612)
-        case .maskVideo: NSSize(width: 420, height: 880)
-        case .arrangePages: NSSize(width: 580, height: 624)
-        case .makeMosaic: NSSize(width: 420, height: 720)
-        case .stitchVideos, .combinePDFs, .imagesToPDF: NSSize(width: 340, height: 300)
-        default: NSSize(width: 420, height: 520)
+        case .compress: NSSize(width: 400, height: 367)
+        case .stripTags: NSSize(width: 500, height: 532)
+        case .adjustPhoto: NSSize(width: 500, height: 779)
+        case .markUpPhoto: NSSize(width: 460, height: 720)
+        case .addBackdrop: NSSize(width: 460, height: 642)
+        case .cropPhoto: NSSize(width: 420, height: 597)
+        case .maskPhoto: NSSize(width: 420, height: 733)
+        case .levelAudio: NSSize(width: 420, height: 603)
+        case .waveVideo: NSSize(width: 420, height: 623)
+        case .cutAudio: NSSize(width: 420, height: 328)
+        case .remixChannels, .censorAudio: NSSize(width: 420, height: 392)
+        case .cutVideo: NSSize(width: 420, height: 674)
+        case .cropClip: NSSize(width: 420, height: 655)
+        case .retimeVideo: NSSize(width: 420, height: 662)
+        case .grabFrames: NSSize(width: 420, height: 668)
+        case .sliceVideo: NSSize(width: 420, height: 580)
+        case .maskVideo: NSSize(width: 420, height: 848)
+        case .arrangePages: NSSize(width: 580, height: 592)
+        case .makeMosaic: NSSize(width: 420, height: 688)
+        case .stitchVideos, .combinePDFs, .imagesToPDF: NSSize(width: 340, height: 268)
+        default: NSSize(width: 420, height: 488)
         }
     }
 

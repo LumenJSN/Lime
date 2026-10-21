@@ -84,15 +84,20 @@ final class WheelController {
     init(settings: AppSettings) {
         self.settings = settings
         NotificationCenter.default.addObserver(forName: .wheelThemeDidChange, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.model.glass = settings.glass }
+            MainActor.assumeIsolated { self?.applySurface() }
         }
+    }
+
+    private func applySurface() {
+        model.glass = settings.glass
+        model.liquid = settings.surface == .liquid
     }
 
     func show(files: [URL], mode: WheelMode, at point: NSPoint, keyboard: Bool = false) {
         self.files = files
         let panel = self.panel ?? makePanel()
         setMode(mode)
-        model.glass = settings.glass
+        applySurface()
         model.idleLabel = Self.summary(files)
         if !(panel.isVisible && model.presented) {
             let size = WheelGeometry.canvasSide

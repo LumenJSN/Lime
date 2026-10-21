@@ -196,7 +196,7 @@ struct GeneralSettings: View {
         SettingsSection(title: "Appearance") {
             HStack(spacing: 8) {
                 Text("Style")
-                TintedSegments(title: "Style", selection: $settings.glass, options: [(true, "Glass"), (false, "Solid")])
+                TintedSegments(title: "Style", selection: $settings.surface, options: SurfaceStyle.offered.map { ($0, $0.title) })
                 Spacer()
             }.frame(height: 38)
         }

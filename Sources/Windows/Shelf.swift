@@ -30,6 +30,7 @@ final class ShelfModel: ObservableObject {
 /// A card that holds files, with a lime tab along its top edge.
 struct ShelfView: View {
     @ObservedObject var model: ShelfModel
+    @ObservedObject var settings: AppSettings
     @Environment(\.colorScheme) private var scheme
     @State private var band: CGRect?
     @State private var itemFrames: [URL: CGRect] = [:]
@@ -62,10 +63,8 @@ struct ShelfView: View {
     }
 
     private var card: some View {
-        ZStack {
-            VisualEffectBlur(material: .hudWindow)
-            (scheme == .dark ? Color.black.opacity(0.25) : Color.white.opacity(0.55))
-        }
+        GlassBackdrop(shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
+                      tint: scheme == .dark ? Color.black.opacity(0.25) : Color.white.opacity(0.55), liquid: settings.surface == .liquid)
     }
 
     private var header: some View {
@@ -309,7 +308,7 @@ final class ShelfController {
         }
         let model = ShelfModel()
         model.items = files
-        let host = FirstMouseHostingView(rootView: ShelfView(model: model))
+        let host = FirstMouseHostingView(rootView: ShelfView(model: model, settings: settings))
         let panel = FloatPanel(contentRect: NSRect(x: 0, y: 0, width: 300, height: 200), styleMask: [.borderless, .nonactivatingPanel, .resizable], backing: .buffered, defer: false)
         panel.isOpaque = false
         panel.backgroundColor = .clear

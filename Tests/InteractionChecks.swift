@@ -184,6 +184,23 @@ expect(!MarkdownRenderer.inline("![a](%2e%2e/secret.png)").contains("<img") && !
         expect(settings.mode(for: [.control, .option]) == .convert, "custom combination resolves")
         dragFiles = []
 
+        // MARK: Surface style
+        do {
+            func fresh(_ setup: (UserDefaults) -> Void) -> AppSettings {
+                let defaults = UserDefaults(suiteName: "LimeSurface-\(UUID().uuidString)")!
+                setup(defaults)
+                return AppSettings(defaults: defaults)
+            }
+            expect(fresh { _ in }.surface == SurfaceStyle.standard, "new installs start on the best glass this Mac has")
+            expect(fresh { $0.set(false, forKey: "glass") }.surface == .solid, "an old Solid choice stays Solid")
+            expect(fresh { $0.set(true, forKey: "glass") }.surface == SurfaceStyle.standard, "an old Glass choice moves to the default glass")
+            expect(fresh { $0.set("frosted", forKey: "surface") }.surface == .frosted, "Frosted can be chosen on any Mac")
+            let liquid = fresh { $0.set("liquid", forKey: "surface") }.surface
+            expect(liquid == (SurfaceStyle.liquidAvailable ? .liquid : .frosted), "Liquid Glass falls back to Frosted without macOS 26")
+            expect(SurfaceStyle.offered.contains(.liquid) == SurfaceStyle.liquidAvailable, "Settings only offers Liquid Glass where it exists")
+            expect(!fresh { $0.set("solid", forKey: "surface") }.glass, "Solid is opaque")
+        }
+
         // MARK: Tool windows
         do {
             let photo = FileManager.default.temporaryDirectory.appendingPathComponent("Lime-\(UUID().uuidString).jpg")
@@ -191,8 +208,8 @@ expect(!MarkdownRenderer.inline("![a](%2e%2e/secret.png)").contains("<img") && !
             let compress = ToolWindowController(tool: .compress, files: [photo], settings: settings) { _, _ in }
             compress.show(near: NSPoint(x: 600, y: 500))
             if let window = compress.window {
-                let fits = { abs(window.contentLayoutRect.height - ToolWindowController.contentHeight(model: compress.model, width: window.frame.width)) < 1 }
-                expect(fits(), "compress window leaves room for its controls under the title bar")
+                let fits = { abs(window.frame.height - ToolWindowController.contentHeight(model: compress.model, width: window.frame.width)) < 1 }
+                expect(fits(), "compress window is exactly as tall as its controls")
                 compress.model.options.sizeGoal = compress.model.options.sizeGoal == .preset ? .percentage : .preset
                 RunLoop.main.run(until: Date().addingTimeInterval(0.8))
                 expect(fits(), "compress window still fits after a mode change")

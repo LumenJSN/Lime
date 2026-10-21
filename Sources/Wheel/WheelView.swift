@@ -8,6 +8,8 @@ final class WheelModel: ObservableObject {
     @Published var mode: WheelMode = .convert
     @Published var selected: Int?
     @Published var glass = true
+    /// Liquid Glass rather than the frosted blur (macOS 26 and later).
+    @Published var liquid = true
     @Published var presented = false
     @Published var idleLabel = ""
     let geometry = WheelGeometry()
@@ -45,15 +47,20 @@ struct WheelView: View {
     private var dark: Bool { scheme == .dark }
     private var labelColor: Color { dark || model.glass ? .white : Color(white: 0.12) }
 
-    private var discFill: Color {
-        if !model.glass { return dark ? Color(white: 0.13) : Color(white: 0.88) }
-        return dark ? Color.black.opacity(0.48) : Color(red: 0.12, green: 0.16, blue: 0.1).opacity(0.42)
+    private var discFill: Color { dark ? Color(white: 0.13) : Color(white: 0.88) }
+
+    /// Tint over the glass, dark enough for white labels on any window.
+    private var smoke: Color {
+        dark ? Color.black.opacity(0.3) : Color(red: 0.1, green: 0.14, blue: 0.08).opacity(0.5)
     }
 
     private var backdrop: some View {
-        let ring = RingShape(outer: g.disc, inner: g.hole)
-        return ZStack {
-            ring.fill(discFill, style: FillStyle(eoFill: true))
+        ZStack {
+            if model.glass {
+                GlassBackdrop(shape: Circle(), tint: smoke, liquid: model.liquid).frame(width: g.disc * 2, height: g.disc * 2)
+            } else {
+                RingShape(outer: g.disc, inner: g.hole).fill(discFill, style: FillStyle(eoFill: true))
+            }
             Circle().strokeBorder(Color(nsColor: Brand.accent).opacity(0.35), lineWidth: 1)
                 .frame(width: g.disc * 2, height: g.disc * 2)
         }
@@ -127,7 +134,10 @@ struct WheelView: View {
             .lineLimit(1).minimumScaleFactor(0.8)
             .padding(.horizontal, 16)
             .frame(width: 260, height: 40)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(discFill))
+            .background {
+                let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+                if model.glass { GlassBackdrop(shape: shape, tint: smoke, liquid: model.liquid) } else { shape.fill(discFill) }
+            }
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color(nsColor: Brand.accent).opacity(0.35), lineWidth: 1))
     }
 }
@@ -148,6 +158,22 @@ struct RingShape: Shape {
         p.addEllipse(in: CGRect(x: rect.midX - outer, y: rect.midY - outer, width: outer * 2, height: outer * 2))
         p.addEllipse(in: CGRect(x: rect.midX - inner, y: rect.midY - inner, width: inner * 2, height: inner * 2))
         return p
+    }
+}
+
+/// See-through backdrop that blurs whatever sits behind it, so file names
+/// underneath never compete with the labels: Liquid Glass when chosen and
+/// available (macOS 26 and later), a behind-window blur otherwise.
+struct GlassBackdrop<S: Shape>: View {
+    let shape: S
+    let tint: Color
+    var liquid = true
+    var body: some View {
+        if liquid, #available(macOS 26.0, *) {
+            Color.clear.glassEffect(.regular, in: shape).overlay(shape.fill(tint))
+        } else {
+            VisualEffectBlur(material: .hudWindow).clipShape(shape).overlay(shape.fill(tint))
+        }
     }
 }
 
