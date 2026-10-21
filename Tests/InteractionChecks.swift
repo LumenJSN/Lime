@@ -184,6 +184,23 @@ expect(!MarkdownRenderer.inline("![a](%2e%2e/secret.png)").contains("<img") && !
         expect(settings.mode(for: [.control, .option]) == .convert, "custom combination resolves")
         dragFiles = []
 
+        // MARK: Tool windows
+        do {
+            let photo = FileManager.default.temporaryDirectory.appendingPathComponent("Lime-\(UUID().uuidString).jpg")
+            try? Data(count: 4096).write(to: photo)
+            let compress = ToolWindowController(tool: .compress, files: [photo], settings: settings) { _, _ in }
+            compress.show(near: NSPoint(x: 600, y: 500))
+            if let window = compress.window {
+                let fits = { abs(window.contentLayoutRect.height - ToolWindowController.contentHeight(model: compress.model, width: window.frame.width)) < 1 }
+                expect(fits(), "compress window leaves room for its controls under the title bar")
+                compress.model.options.sizeGoal = compress.model.options.sizeGoal == .preset ? .percentage : .preset
+                RunLoop.main.run(until: Date().addingTimeInterval(0.8))
+                expect(fits(), "compress window still fits after a mode change")
+                window.close()
+            } else { expect(false, "compress window opens") }
+            try? FileManager.default.removeItem(at: photo)
+        }
+
         print("PASS: \(checks - failures.count)/\(checks) interaction checks")
         for f in failures { print("FAIL " + f) }
         exit(failures.isEmpty ? 0 : 1)

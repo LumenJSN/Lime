@@ -64,7 +64,7 @@ final class ToolEditorModel: ObservableObject {
 @MainActor
 final class ToolWindowController: NSObject, NSWindowDelegate {
     let model: ToolEditorModel
-    private var window: NSWindow?
+    private(set) var window: NSWindow?
     private let apply: (ToolChoices, NSPoint) -> Void
     private var modeWatch: AnyCancellable?
     var onClose: (() -> Void)?
@@ -93,6 +93,10 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
         window.contentView = host
         window.delegate = self
         window.level = .floating
+        if fits {
+            size.height += Self.titleBarInset(window)
+            window.setContentSize(size)
+        }
         if let screen = NSScreen.screens.first(where: { NSMouseInRect(point, $0.frame, false) }) ?? NSScreen.main {
             let f = screen.visibleFrame
             let origin = NSPoint(x: min(max(point.x - size.width / 2, f.minX), f.maxX - size.width), y: min(max(point.y - size.height / 2, f.minY), f.maxY - size.height))
@@ -118,14 +122,23 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
         return ceil(probe.fittingSize.height)
     }
 
-    /// Resizes the window to its content, keeping the title bar in place.
+    /// Height of the hidden title bar. SwiftUI lays the content out below it,
+    /// so a window sized to its content needs this much more.
+    static func titleBarInset(_ window: NSWindow) -> CGFloat {
+        window.frame.height - window.contentLayoutRect.height
+    }
+
+    /// Resizes the window to its content, keeping the title bar in place
+    /// unless that would push the bottom off screen.
     private func fitHeight() {
         guard let window else { return }
-        let width = window.contentRect(forFrameRect: window.frame).width
-        let target = window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: width, height: Self.contentHeight(model: model, width: width)))
+        let height = Self.contentHeight(model: model, width: window.frame.width) + Self.titleBarInset(window)
         var frame = window.frame
-        frame.origin.y = frame.maxY - target.height
-        frame.size.height = target.height
+        frame.origin.y = frame.maxY - height
+        frame.size.height = height
+        if let visible = window.screen?.visibleFrame, frame.minY < visible.minY {
+            frame.origin.y = min(visible.minY, visible.maxY - height)
+        }
         if frame != window.frame { window.setFrame(frame, display: true, animate: true) }
     }
 
