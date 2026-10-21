@@ -41,7 +41,7 @@ struct WheelView: View {
         .rotationEffect(.degrees(model.presented ? 0 : -12))
         .opacity(model.presented ? 1 : 0)
         .animation(.spring(response: 0.3, dampingFraction: 0.74), value: model.presented)
-        .animation(.easeOut(duration: 0.09), value: model.selected)
+        .animation(liquid ? .spring(response: 0.26, dampingFraction: 0.72) : .easeOut(duration: 0.09), value: model.selected)
         .animation(.easeInOut(duration: 0.22), value: model.mode)
     }
 
@@ -70,7 +70,7 @@ struct WheelView: View {
 
     @ViewBuilder private var liquidGlass: some View {
         if liquid, #available(macOS 26.0, *) {
-            LiquidPetals(count: model.items.count, selected: model.selected, hubDiameter: g.hole * 2 - 4)
+            LiquidPetals(count: model.items.count, selected: model.selected, hubDiameter: g.hole * 2 - 4, geometry: g)
         }
     }
 
@@ -85,6 +85,12 @@ struct WheelView: View {
         return dark ? Color(white: 0.18) : Color(white: 0.96)
     }
 
+    /// Soft halo that keeps labels crisp over whatever the glass refracts.
+    private var labelHalo: Color {
+        guard liquid else { return .clear }
+        return dark ? Color.black.opacity(0.45) : Color.white.opacity(0.7)
+    }
+
     private var selectedFill: LinearGradient {
         let lime = Color(nsColor: Brand.accent)
         return LinearGradient(colors: [lime.opacity(0.82), lime], startPoint: .top, endPoint: .bottom)
@@ -94,12 +100,15 @@ struct WheelView: View {
         let active = model.selected == index
         let count = model.items.count
         let shape = PetalShape(index: index, count: count)
-        let label = g.labelCenter(index, of: count)
+        let lift = liquid && active ? g.lift(index, of: count) : .zero
+        let label = g.labelCenter(index, of: count).applying(CGAffineTransform(translationX: lift.x, y: lift.y))
         let textColor: Color = active ? .white : labelColor
         return ZStack {
-            // Liquid Glass petals are glass already; only the highlight is painted.
-            if active { shape.fill(selectedFill) } else if !liquid { shape.fill(petalFill) }
-            if active { shape.stroke(Color.white.opacity(0.5), lineWidth: 1) }
+            // Liquid Glass petals, highlight included, are drawn by LiquidPetals.
+            if !liquid {
+                shape.fill(active ? AnyShapeStyle(selectedFill) : AnyShapeStyle(petalFill))
+                if active { shape.stroke(Color.white.opacity(0.5), lineWidth: 1) }
+            }
             if let symbol = item.symbol {
                 VStack(spacing: 3) {
                     Image(systemName: symbol).font(.system(size: 14, weight: .regular)).frame(height: 16)
@@ -116,6 +125,7 @@ struct WheelView: View {
                     .offset(x: label.x, y: label.y)
             }
         }
+        .shadow(color: active ? .clear : labelHalo, radius: liquid ? 1.5 : 0)
         .frame(width: WheelGeometry.canvasSide, height: WheelGeometry.canvasSide)
     }
 

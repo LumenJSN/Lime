@@ -30,6 +30,13 @@ struct WheelGeometry: Sendable {
         point(radius: labelRadius, bearing: bearing(index, of: count))
     }
 
+    /// How far the highlighted Liquid Glass petal lifts away from the hub.
+    let liftDistance: CGFloat = 5
+
+    func lift(_ index: Int, of count: Int) -> CGPoint {
+        count > 1 ? point(radius: liftDistance, bearing: bearing(index, of: count)) : .zero
+    }
+
     /// Angle that moves a point at `radius` half a gutter away from a sector edge.
     private func gutterAngle(at radius: CGFloat) -> CGFloat { asin(min(1, gap / 2 / radius)) }
 
