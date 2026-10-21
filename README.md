@@ -16,7 +16,7 @@ A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to co
 
 </div>
 
-https://github.com/user-attachments/assets/1e38b5f1-ee57-4c19-aa40-3618831c32df
+https://github.com/user-attachments/assets/c3fe106b-40b3-4420-bfbd-e6cb639224f9
 
 ## Getting started
 
