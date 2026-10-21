@@ -18,6 +18,8 @@ enum RenderHarness {
             model.mode = mode
             model.selected = selected
             model.glass = glass
+            // Liquid Glass needs the window server, so offscreen renders use Frosted.
+            model.liquid = false
             model.idleLabel = "2.4 MB"
             model.presented = true
             return AnyView(WheelView(model: model).background(dark ? Color(white: 0.12) : Color(white: 0.96)).environment(\.colorScheme, dark ? .dark : .light))

@@ -15,7 +15,7 @@ final class WheelModel: ObservableObject {
     let geometry = WheelGeometry()
 }
 
-/// The wheel: a smoked disc, frosted petals, a lime highlight and a round
+/// The wheel: glass, frosted or solid petals, a lime highlight and a round
 /// readout in the middle.
 struct WheelView: View {
     @ObservedObject var model: WheelModel
@@ -28,6 +28,7 @@ struct WheelView: View {
                 emptyLabel
             } else {
                 backdrop
+                liquidGlass
                 ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
                     petal(index: index, item: item)
                 }
@@ -45,30 +46,43 @@ struct WheelView: View {
     }
 
     private var dark: Bool { scheme == .dark }
-    private var labelColor: Color { dark || model.glass ? .white : Color(white: 0.12) }
+    private var labelColor: Color { dark ? .white : Color(white: 0.12) }
+    /// Petals and hub are Liquid Glass pieces rather than painted shapes.
+    private var liquid: Bool { model.glass && model.liquid && SurfaceStyle.liquidAvailable }
 
     private var discFill: Color { dark ? Color(white: 0.13) : Color(white: 0.88) }
 
-    /// Tint over the glass, dark enough for white labels on any window.
-    private var smoke: Color {
-        dark ? Color.black.opacity(0.3) : Color(red: 0.1, green: 0.14, blue: 0.08).opacity(0.5)
+    /// Solid ring, or a frosted disc that follows light and dark mode.
+    /// The Liquid Glass wheel has no disc; its petals are the glass.
+    @ViewBuilder private var backdrop: some View {
+        if !liquid {
+            ZStack {
+                if model.glass {
+                    GlassBackdrop(shape: Circle(), liquid: false, material: .popover).frame(width: g.disc * 2, height: g.disc * 2)
+                } else {
+                    Circle().fill(discFill).frame(width: g.disc * 2, height: g.disc * 2)
+                }
+                Circle().strokeBorder(Color(nsColor: Brand.accent).opacity(0.35), lineWidth: 1)
+                    .frame(width: g.disc * 2, height: g.disc * 2)
+            }
+        }
     }
 
-    private var backdrop: some View {
-        ZStack {
-            if model.glass {
-                GlassBackdrop(shape: Circle(), tint: smoke, liquid: model.liquid).frame(width: g.disc * 2, height: g.disc * 2)
-            } else {
-                RingShape(outer: g.disc, inner: g.hole).fill(discFill, style: FillStyle(eoFill: true))
-            }
-            Circle().strokeBorder(Color(nsColor: Brand.accent).opacity(0.35), lineWidth: 1)
-                .frame(width: g.disc * 2, height: g.disc * 2)
+    @ViewBuilder private var liquidGlass: some View {
+        if liquid, #available(macOS 26.0, *) {
+            LiquidPetals(count: model.items.count, selected: model.selected, hubDiameter: g.hole * 2 - 4)
         }
     }
 
     private var petalFill: Color {
         if !model.glass { return dark ? Color(white: 0.24) : Color.white }
-        return Color.white.opacity(dark ? 0.1 : 0.16)
+        return dark ? Color.white.opacity(0.1) : Color.white.opacity(0.5)
+    }
+
+    private var hubFill: Color {
+        if liquid { return .clear }
+        if model.glass { return dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7) }
+        return dark ? Color(white: 0.18) : Color(white: 0.96)
     }
 
     private var selectedFill: LinearGradient {
@@ -83,7 +97,8 @@ struct WheelView: View {
         let label = g.labelCenter(index, of: count)
         let textColor: Color = active ? .white : labelColor
         return ZStack {
-            if active { shape.fill(selectedFill) } else { shape.fill(petalFill) }
+            // Liquid Glass petals are glass already; only the highlight is painted.
+            if active { shape.fill(selectedFill) } else if !liquid { shape.fill(petalFill) }
             if active { shape.stroke(Color.white.opacity(0.5), lineWidth: 1) }
             if let symbol = item.symbol {
                 VStack(spacing: 3) {
@@ -120,7 +135,7 @@ struct WheelView: View {
             .foregroundStyle(labelColor)
             .padding(.horizontal, 8)
             .frame(width: g.hole * 2 - 4, height: g.hole * 2 - 4)
-            .background(Circle().fill(dark || model.glass ? Color.black.opacity(0.35) : Color.white.opacity(0.9)))
+            .background(Circle().fill(hubFill))
             .id(lines.joined())
             .transition(.opacity)
         }
@@ -136,7 +151,7 @@ struct WheelView: View {
             .frame(width: 260, height: 40)
             .background {
                 let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
-                if model.glass { GlassBackdrop(shape: shape, tint: smoke, liquid: model.liquid) } else { shape.fill(discFill) }
+                if model.glass { GlassBackdrop(shape: shape, liquid: liquid, material: .popover) } else { shape.fill(discFill) }
             }
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color(nsColor: Brand.accent).opacity(0.35), lineWidth: 1))
     }
@@ -151,28 +166,20 @@ struct PetalShape: Shape {
     }
 }
 
-struct RingShape: Shape {
-    let outer: CGFloat, inner: CGFloat
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.addEllipse(in: CGRect(x: rect.midX - outer, y: rect.midY - outer, width: outer * 2, height: outer * 2))
-        p.addEllipse(in: CGRect(x: rect.midX - inner, y: rect.midY - inner, width: inner * 2, height: inner * 2))
-        return p
-    }
-}
-
 /// See-through backdrop that blurs whatever sits behind it, so file names
 /// underneath never compete with the labels: Liquid Glass when chosen and
 /// available (macOS 26 and later), a behind-window blur otherwise.
 struct GlassBackdrop<S: Shape>: View {
     let shape: S
-    let tint: Color
+    var tint: Color = .clear
     var liquid = true
+    /// Blur used when Liquid Glass is off or unavailable.
+    var material: NSVisualEffectView.Material = .hudWindow
     var body: some View {
         if liquid, #available(macOS 26.0, *) {
             Color.clear.glassEffect(.regular, in: shape).overlay(shape.fill(tint))
         } else {
-            VisualEffectBlur(material: .hudWindow).clipShape(shape).overlay(shape.fill(tint))
+            VisualEffectBlur(material: material).clipShape(shape).overlay(shape.fill(tint))
         }
     }
 }

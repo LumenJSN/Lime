@@ -63,8 +63,9 @@ struct ShelfView: View {
     }
 
     private var card: some View {
-        GlassBackdrop(shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                      tint: scheme == .dark ? Color.black.opacity(0.25) : Color.white.opacity(0.55), liquid: settings.surface == .liquid)
+        let liquid = settings.surface == .liquid
+        let tint = liquid ? Color.clear : scheme == .dark ? Color.black.opacity(0.25) : Color.white.opacity(0.55)
+        return GlassBackdrop(shape: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: tint, liquid: liquid)
     }
 
     private var header: some View {
