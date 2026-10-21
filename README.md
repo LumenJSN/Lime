@@ -89,3 +89,9 @@ FFmpeg (LGPL), LAME, Opus, Vorbis, libvpx and libwebp are built from public sour
 ## Icon
 
 Redraw it with `swift Scripts/MakeIcon.swift <folder>.iconset && iconutil -c icns <folder>.iconset -o Resources/AppIcon.icns`.
+
+<p align="center">
+  <a href="https://www.trymacapps.com" target="_blank" rel="noopener">
+    <img src="https://www.trymacapps.com/badge.png" alt="Featured on TryMacApps" width="200" height="67" />
+  </a>
+</p>
