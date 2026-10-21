@@ -17,10 +17,7 @@ A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to co
 </div>
 
 <p align="center">
-  <img src="Screenshots/wheel-liquid.png" height="170" alt="⌘ tools wheel in Liquid Glass" />
-  <img src="Screenshots/wheel-convert-audio-selected.png" height="170" alt="⇧ convert wheel" />
-  <img src="Screenshots/tool-compress.png" height="170" alt="Compress window" />
-  <img src="Screenshots/shelf.png" height="170" alt="Shelf" />
+  <img src="Screenshots/promo.gif" width="720" alt="Lime in 20 seconds: tap Shift to convert, Command for tools, Control for actions" />
 </p>
 
 ## Getting started
