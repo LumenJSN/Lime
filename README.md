@@ -1,52 +1,73 @@
-# Lime 1.0
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/header/glow.svg?title=Lime&amp;subtitle=Drag+a+file%2C+tap+a+key%2C+pick+a+petal.&amp;logo=https%3A%2F%2Fraw.githubusercontent.com%2FLumenJSN%2FLime%2Fmain%2F.github%2Flime-icon.png&amp;accent=a3e635&amp;glow=a3e635&amp;align=left&amp;font=geist-mono&amp;border=false&amp;mode=dark" /><img alt="Lime" src="https://shieldcn.dev/header/glow.svg?title=Lime&amp;subtitle=Drag+a+file%2C+tap+a+key%2C+pick+a+petal.&amp;logo=https%3A%2F%2Fraw.githubusercontent.com%2FLumenJSN%2FLime%2Fmain%2F.github%2Flime-icon.png&amp;accent=a3e635&amp;glow=a3e635&amp;align=left&amp;font=geist-mono&amp;border=false&amp;mode=light" /></picture>
+</p>
 
-파일을 끄는 도중 키를 한 번 탭하면 휠이 떠서, 거기서 변환·편집·정리를 하는 macOS 메뉴 막대 앱입니다. 색과 아이콘 모두 라임을 씁니다.
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/version-1.0-65a30d.svg?variant=default&amp;size=sm&amp;logo=lu:Citrus&amp;logoColor=ffffff&amp;mode=dark" /><img alt="version 1.0" src="https://shieldcn.dev/badge/version-1.0-65a30d.svg?variant=default&amp;size=sm&amp;logo=lu:Citrus&amp;logoColor=ffffff&amp;mode=light" /></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/macOS-13%2B_Apple_silicon.svg?logo=apple&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="macOS 13+ on Apple silicon" src="https://shieldcn.dev/badge/macOS-13%2B_Apple_silicon.svg?logo=apple&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/Swift-6.svg?logo=swift&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="Swift 6" src="https://shieldcn.dev/badge/Swift-6.svg?logo=swift&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture>
+  <a href="#features"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/conversions-269_routes.svg?logo=lu:Repeat&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="269 conversion routes" src="https://shieldcn.dev/badge/conversions-269_routes.svg?logo=lu:Repeat&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture></a>
+  <a href="#features"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/tools-27.svg?logo=lu:Wrench&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="27 tools" src="https://shieldcn.dev/badge/tools-27.svg?logo=lu:Wrench&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture></a>
+</p>
 
-## 실행
+<div align="center">
 
-1. 같은 드래그 단축키를 쓰는 다른 앱이 있으면 종료합니다. 휠이 겹칩니다.
-2. `../Lime.app`을 엽니다. 처음 실행하면 소개 창이 뜹니다. 이후 설정은 메뉴 막대 아이콘에서 엽니다.
-3. Finder에서 파일을 끄는 동안 키를 한 번 탭합니다.
-   - **⇧ Shift**: 변환 휠
-   - **⌘ Command**: 도구 휠
-   - **⌃ Control**: 동작 휠
-4. 키에서 손을 떼도 휠은 남아 있습니다. 원하는 조각 위에 놓으면 실행되고, 가운데나 바깥에 놓으면 취소됩니다. 휠이 떠 있을 때 다른 키를 탭하면 그 휠로 바뀝니다.
-5. 결과는 원본 옆에 `이름.확장자`로 저장됩니다. 도구 결과는 `이름 (compressed).jpg`처럼 괄호 꼬리표가 붙고, 이름이 겹치면 `이름 (compressed) 2.jpg`가 됩니다. 원본은 그대로 둡니다.
+A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to convert, edit or tidy it.
 
-Apple silicon과 macOS 13 이상이 필요합니다. 로컬 ad-hoc 서명 빌드라서 처음 열 때 우클릭 → 열기가 필요할 수 있습니다.
+</div>
 
-## 기능
+<p align="center">
+  <img src="Screenshots/wheel-tools-photo.png" height="170" alt="⌘ tools wheel" />
+  <img src="Screenshots/wheel-convert-audio-selected.png" height="170" alt="⇧ convert wheel" />
+  <img src="Screenshots/tool-compress.png" height="170" alt="Compress window" />
+  <img src="Screenshots/shelf.png" height="170" alt="Shelf" />
+</p>
 
-- **변환 269개 경로**: 이미지 8종, 오디오 8종, 비디오 6종과 GIF, PDF, DOCX/Pages/Markdown/RTF/RTFD/텍스트 클리핑/TXT/EPUB, PPT/PPTX, XLSX/XLS/ODS/CSV/TSV, SRT/VTT, ZIP/TAR/GZIP/RAR. RAR, PPT, XLS, RTF, RTFD, 텍스트 클리핑, WEBM은 읽기만 합니다. 전체 표는 설정 › Conversions에 있습니다.
-- **도구 27개**: Compress(프리셋·목표 크기·비율), Metadata(편집/삭제), Edit(21개 슬라이더), Annotate(화살표·선·상자·원·텍스트·펜·형광펜·번호·돋보기·그림), Background(그라데이션 12종·단색 12종·이미지), Crop(비율·정확한 픽셀), Read QR, Redact(얼굴·글자 자동 감지), Normalize, Mute, Trim(조용한 앞뒤 자동 제거), PDF Split/Organize/Merge, Create PDF, Extract, 동영상 Crop·Speed·Join·Snapshot·Split·Redact, Visualize, Channels, Bleep, Collage.
-- **편집 창 조작**: Bleep·Redact 구간은 끌어서 옮기고 양 끝으로 길이를 바꿉니다. 우클릭으로 "현재 위치부터"·"클립 전체"를 고르고, Delete로 지우고, 시작/끝을 초 단위로 입력할 수 있습니다. Split Video에서 조각을 빼면 나머지를 한 영상(Export as One Video)으로 저장하거나 따로 저장합니다. Annotate에는 크기 핸들, 텍스트 폭 조절, Clear Drawing, 돋보기 배율, ⌘V 이미지 붙여넣기가 있습니다. 트림 핸들은 화살표 키로 0.01초씩 움직입니다. 움직이는 WebP는 압축해도 애니메이션이 유지됩니다.
-- **선택 도구**: 도구 휠 맨 뒤에 붙습니다. 설정 › Basics의 "Extra tools"로 켜고 끕니다.
-  - **COPY TEXT**: 이미지·GIF·PDF의 글자를 기기 안에서 인식해(한국어·영어·일본어·중국어) 바로 클립보드에 복사하고 결과 창을 띄웁니다. 텍스트가 있는 PDF는 텍스트 레이어를 쓰고, 스캔 페이지만 OCR합니다. 저장하면 `이름 (text).txt`가 됩니다. 여러 파일도 한 번에 됩니다.
-  - **REMOVE BG**: 사진의 사람·동물·사물을 찾아 배경을 지운 투명 PNG(`이름 (no background).png`)를 만듭니다. macOS 14 이상에서 됩니다.
-- **동작 6개**: Shelf, Copy, Move, AirDrop, Copy Path, Terminal(Terminal/iTerm2 열기).
-- **Shelf**: 위쪽에 라임 탭이 달린 보관 카드입니다. 아이콘/목록 보기, 빈 곳을 끌어 여러 개 선택, 여러 파일 한 번에 끌어내기, 파일을 놓아 추가, 접기, 화면 가장자리에 붙이기, Space로 Quick Look을 지원합니다.
-- **설정**: Basics(Glass/Solid, 로그인 시 실행, 소리·햅틱, 휠별 키 조합, Shelf 동작, 터미널 앱), Outputs(형식별 품질·메타데이터·비트 깊이·압축·최대 영상 높이·EPUB/Office 레이아웃), Conversions(형식 표), Access(저장 위치·폴더 권한), About Lime.
-- 진행 카드, 취소, 끝난 뒤 클릭하면 Finder에서 보기.
+## Getting started
 
-## 다른 앱 없이 동작
+1. Quit any other app that uses the same drag shortcuts, or the wheels will clash.
+2. Open `../Lime.app`. A welcome window appears on first launch; after that, settings live in the menu-bar icon.
+3. While dragging files in Finder, tap a key once:
+   - **⇧ Shift**: convert wheel
+   - **⌘ Command**: tools wheel
+   - **⌃ Control**: actions wheel
+4. The wheel stays up after you let go of the key. Drop on a petal to run it; drop in the centre or outside to cancel. Tap another key while the wheel is up to switch to that wheel.
+5. Results are saved next to the original as `name.ext`. Tool results get a tag in parentheses, like `name (compressed).jpg`, and become `name (compressed) 2.jpg` if that name is taken. The original is never touched.
 
-Pages, Keynote, Numbers, Word, PowerPoint, Excel 중 어느 것도 실행하지 않습니다.
+Requires Apple silicon and macOS 13 or later. Builds are ad-hoc signed locally, so the first launch may need right-click → Open.
 
-- **PPT/PPTX → PDF/JPG/PNG**: macOS에 내장된 Office 미리보기 렌더러(Quick Look)로 그립니다.
-- **Pages 읽기**: .pages 안의 IWA 아카이브에서 본문·제목·목록·굵게/기울임을 직접 읽습니다.
-- **Pages 쓰기**: 앱에 든 템플릿의 본문을 바꿔 진짜 .pages 파일을 만듭니다. Pages에서 그대로 열립니다.
-- **XLS**: 자체 BIFF8 해석기로 읽고, 실패하면 Quick Look 표를 읽습니다.
+## Features
 
-## 빌드와 테스트
+- **269 conversion routes**: 8 image, 8 audio and 6 video formats plus GIF, PDF, DOCX/Pages/Markdown/RTF/RTFD/text clipping/TXT/EPUB, PPT/PPTX, XLSX/XLS/ODS/CSV/TSV, SRT/VTT and ZIP/TAR/GZIP/RAR. RAR, PPT, XLS, RTF, RTFD, text clippings and WEBM are read-only. The full table is in Settings › Conversions.
+- **27 tools**: Compress (preset, target size or percentage), Metadata (edit/strip), Edit (21 sliders), Annotate (arrow, line, box, circle, text, pen, highlighter, numbers, magnifier, images), Background (12 gradients, 12 solid colours, or an image), Crop (aspect ratios or exact pixels), Read QR, Redact (automatic face and text detection), Normalize, Mute, Trim (auto-removes quiet edges), PDF Split/Organize/Merge, Create PDF, Extract, video Crop·Speed·Join·Snapshot·Split·Redact, Visualize, Channels, Bleep and Collage.
+- **Editor windows**: Bleep and Redact ranges can be dragged to move and resized from either end. Right-click to choose "from here" or "whole clip", press Delete to remove one, or type start/end times in seconds. In Split Video, leave out the parts you don't want and save the rest as one video (Export as One Video) or as separate clips. Annotate has resize handles, adjustable text width, Clear Drawing, magnifier zoom and ⌘V image paste. Trim handles move 0.01 s per arrow key. Animated WebP keeps its animation when compressed.
+- **Optional tools**: added to the end of the tools wheel. Turn them on or off with "Extra tools" in Settings › Basics.
+  - **COPY TEXT**: recognises text in images, GIFs and PDFs on-device (Korean, English, Japanese, Chinese), copies it straight to the clipboard and shows a result window. PDFs with a text layer use it; only scanned pages are OCR'd. Saving produces `name (text).txt`. Works on several files at once.
+  - **REMOVE BG**: finds the person, animal or object in a photo and makes a transparent PNG without the background (`name (no background).png`). Needs macOS 14 or later.
+- **6 actions**: Shelf, Copy, Move, AirDrop, Copy Path and Terminal (opens Terminal or iTerm2).
+- **Shelf**: a holding card with a lime tab on top. Icon and list views, drag on empty space to select several, drag many files out at once, drop files in to add them, collapse, snap to screen edges, and Space for Quick Look.
+- **Settings**: Basics (Glass/Solid, launch at login, sound and haptics, key combo per wheel, Shelf behaviour, terminal app), Outputs (per-format quality, metadata, bit depth, compression, maximum video height, EPUB/Office layout), Conversions (format table), Access (save location, folder permissions) and About Lime.
+- Progress cards, cancel, and click when finished to reveal in Finder.
+
+## No other apps needed
+
+Lime never launches Pages, Keynote, Numbers, Word, PowerPoint or Excel.
+
+- **PPT/PPTX → PDF/JPG/PNG**: rendered with macOS's built-in Office preview renderer (Quick Look).
+- **Reading Pages**: body text, headings, lists and bold/italic are read directly from the IWA archive inside the .pages file.
+- **Writing Pages**: swaps the body of a bundled template to produce a real .pages file that opens in Pages as is.
+- **XLS**: read with a built-in BIFF8 parser, falling back to Quick Look's table if that fails.
+
+## Build and test
 
 ```sh
-./Scripts/BuildMediaTools.sh   # 처음 한 번: ffmpeg/ffprobe를 공개 소스에서 빌드해 Resources/Tools에 넣음
-./build.sh   # ../Lime.app 생성
-./test.sh    # 상호작용 340개, 변환 269개 경로, 도구 55개 검사
+./Scripts/BuildMediaTools.sh   # once: builds ffmpeg/ffprobe from public sources into Resources/Tools
+./build.sh   # produces ../Lime.app
+./test.sh    # 340 interaction checks, 269 conversion routes, 55 tool checks
 ```
 
-FFmpeg(LGPL)과 LAME, Opus, Vorbis, libvpx, libwebp는 `Scripts/BuildMediaTools.sh`로 공개 소스에서 직접 빌드했습니다. 라이선스는 `Resources/Licenses`에 있습니다. `Lime.app --render <폴더>`는 휠·설정·편집 창을 PNG로 그립니다.
+FFmpeg (LGPL), LAME, Opus, Vorbis, libvpx and libwebp are built from public sources by `Scripts/BuildMediaTools.sh`. Their licences are in `Resources/Licenses`. `Lime.app --render <folder>` draws the wheels, settings and editor windows as PNGs.
 
-## 아이콘
+## Icon
 
-`swift Scripts/MakeIcon.swift <폴더>.iconset && iconutil -c icns <폴더>.iconset -o Resources/AppIcon.icns`로 다시 그릴 수 있습니다.
+Redraw it with `swift Scripts/MakeIcon.swift <folder>.iconset && iconutil -c icns <folder>.iconset -o Resources/AppIcon.icns`.
