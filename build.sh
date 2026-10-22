@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BUILD="${LIME_BUILD_DIR:-$ROOT/.build}"
 APP="${LIME_APP_PATH:-$ROOT/../Lime.app}"
-VERSION="1.1.4"
+VERSION="1.1.5"
 "$ROOT/Scripts/FetchSparkle.sh"
 SPARKLE="$ROOT/.deps/Sparkle"
 mkdir -p "$BUILD/module-cache"
