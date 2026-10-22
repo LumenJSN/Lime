@@ -1,6 +1,7 @@
 #!/bin/bash
 # Builds a release of the version in build.sh into ../dist/<version>:
-# an ad-hoc signed app zip (no personal certificate or home path inside),
+# an ad-hoc signed app zip for Sparkle and a drag-to-Applications DMG (no
+# personal certificate or home path inside either),
 # the LGPL sources, SHA256SUMS.txt, and a new item at the top of appcast.xml
 # signed with the Sparkle key in the login Keychain (account "lime").
 # Publishing stays manual: commit appcast.xml, then run the printed gh command.
@@ -10,6 +11,7 @@ VERSION="$(sed -n 's/^VERSION="\(.*\)"$/\1/p' "$ROOT/build.sh")"
 DIST="$ROOT/../dist/$VERSION"
 SOURCES_DIR="${LIME_SOURCES_DIR:-$ROOT/../../work/dependencies/downloads}"
 ZIP="Lime-$VERSION-arm64.zip"
+DMG="Lime-$VERSION-arm64.dmg"
 REPO="LumenJSN/Lime"
 
 rm -rf "$DIST" && mkdir -p "$DIST"
@@ -34,8 +36,9 @@ if grep -r -a -q -i -e "/Users/$NAME" "$DIST/Lime.app"; then
 fi
 
 (cd "$DIST" && ditto -c -k --sequesterRsrc --keepParent Lime.app "$ZIP")
+"$ROOT/Scripts/MakeDMG.sh" "$DIST/Lime.app" "$DIST/$DMG"
 cp "$SOURCES_DIR/ffmpeg-8.0.tar.xz" "$SOURCES_DIR/lame-3.100.tar.gz" "$DIST/"
-(cd "$DIST" && shasum -a 256 "$ZIP" ffmpeg-8.0.tar.xz lame-3.100.tar.gz > SHA256SUMS.txt)
+(cd "$DIST" && shasum -a 256 "$DMG" "$ZIP" ffmpeg-8.0.tar.xz lame-3.100.tar.gz > SHA256SUMS.txt)
 
 SIGNATURE="$("$ROOT/.deps/Sparkle/bin/sign_update" --account lime "$DIST/$ZIP")"
 ITEM="    <item>
@@ -60,4 +63,4 @@ EOF
 
 echo "Release files are in $DIST"
 echo "Next: commit appcast.xml, push, then:"
-echo "  gh release create v$VERSION -R $REPO --target main --title \"Lime $VERSION\" --notes-file <notes.md> \"$DIST/$ZIP\" \"$DIST/ffmpeg-8.0.tar.xz\" \"$DIST/lame-3.100.tar.gz\" \"$DIST/SHA256SUMS.txt\""
+echo "  gh release create v$VERSION -R $REPO --target main --title \"Lime $VERSION\" --notes-file <notes.md> \"$DIST/$DMG\" \"$DIST/$ZIP\" \"$DIST/ffmpeg-8.0.tar.xz\" \"$DIST/lame-3.100.tar.gz\" \"$DIST/SHA256SUMS.txt\""

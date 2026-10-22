@@ -33,9 +33,11 @@ https://github.com/user-attachments/assets/c3fe106b-40b3-4420-bfbd-e6cb639224f9
 
 Requires Apple silicon and macOS 13 or later.
 
-1. Download the latest `Lime-<version>-arm64.zip` from [Releases](https://github.com/LumenJSN/Lime/releases/latest) and unzip it.
-2. Move `Lime.app` to `/Applications`.
-3. Open it.
+1. Download the latest `Lime-<version>-arm64.dmg` from [Releases](https://github.com/LumenJSN/Lime/releases/latest) and open it.
+2. Drag **Lime** onto **Applications**, then eject the disk image.
+3. Open Lime from Applications.
+
+The release also has a `.zip` of the same app, which is what automatic updates use.
 
 Lime is not notarized by Apple, so macOS may refuse to open it the first time ("Lime is damaged" or "Apple could not verify Lime"). Allow it in one of these ways, then open it again:
 
@@ -47,7 +49,7 @@ Lime is not notarized by Apple, so macOS may refuse to open it the first time ("
 
 - **System Settings**: after the warning, go to Privacy & Security, scroll down and click **Open Anyway** next to the Lime message. On macOS 14 and earlier, right-click `Lime.app` → **Open** also works.
 
-Only do this for a copy you downloaded from this repository's Releases page. Each zip's SHA-256 is listed in the release's `SHA256SUMS.txt`.
+Only do this for a copy you downloaded from this repository's Releases page. Each download's SHA-256 is listed in the release's `SHA256SUMS.txt`.
 
 ### Updates
 
@@ -81,7 +83,7 @@ Lime never launches Pages, Keynote, Numbers, Word, PowerPoint or Excel.
 ./Scripts/BuildMediaTools.sh   # once: builds ffmpeg/ffprobe from public sources into Resources/Tools
 ./build.sh   # produces ../Lime.app (fetches the pinned Sparkle release into .deps on first run)
 ./test.sh    # 349 interaction checks, 269 conversion routes, 55 tool checks
-./Scripts/Release.sh   # ad-hoc signed zip, sources, checksums and a signed appcast item in ../dist/<version>
+./Scripts/Release.sh   # ad-hoc signed zip and DMG, sources, checksums and a signed appcast item in ../dist/<version>
 ```
 
 FFmpeg (LGPL), LAME, Opus, Vorbis, libvpx and libwebp are built from public sources by `Scripts/BuildMediaTools.sh`. Their licences are in `Resources/Licenses` (and inside the app). Each release also attaches the exact FFmpeg and LAME source archives it was built from. `Lime.app --render <folder>` draws the wheels, settings and editor windows as PNGs.
