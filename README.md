@@ -47,6 +47,8 @@ Lime is not notarized by Apple, so macOS may refuse to open it the first time ("
   xattr -dr com.apple.quarantine /Applications/Lime.app
   ```
 
+  If it says `Permission denied` (for example, another account installed Lime), run it with `sudo` in front and enter your Mac password.
+
 - **System Settings**: after the warning, go to Privacy & Security, scroll down and click **Open Anyway** next to the Lime message. On macOS 14 and earlier, right-click `Lime.app` → **Open** also works.
 
 Only do this for a copy you downloaded from this repository's Releases page. Each download's SHA-256 is listed in the release's `SHA256SUMS.txt`.
