@@ -61,6 +61,10 @@ with open(path, "w") as handle:
     handle.write(updated)
 EOF
 
+# The release badge names the version itself: shieldcn caches the GitHub
+# release, so a live badge still showed the previous version after a release.
+sed -i '' "s#shieldcn.dev/badge/release-v[0-9.]*\.svg#shieldcn.dev/badge/release-v$VERSION.svg#g" "$ROOT/README.md"
+
 echo "Release files are in $DIST"
-echo "Next: commit appcast.xml, push, then:"
+echo "Next: commit appcast.xml and README.md, push, then:"
 echo "  gh release create v$VERSION -R $REPO --target main --title \"Lime $VERSION\" --notes-file <notes.md> \"$DIST/$DMG\" \"$DIST/$ZIP\" \"$DIST/ffmpeg-8.0.tar.xz\" \"$DIST/lame-3.100.tar.gz\" \"$DIST/SHA256SUMS.txt\""
