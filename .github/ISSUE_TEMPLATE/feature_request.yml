@@ -1,0 +1,21 @@
+name: Feature request
+description: Suggest a new conversion, tool or improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: The task you're trying to get done, such as "turn a Keynote file into a PDF".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How should it work in Lime?
+      description: Which wheel it belongs on, and what the result should look like.
+  - type: textarea
+    id: today
+    attributes:
+      label: What do you use today?
+      description: Other apps or steps you use for this now.

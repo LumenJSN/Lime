@@ -89,3 +89,9 @@ FFmpeg (LGPL), LAME, Opus, Vorbis, libvpx and libwebp are built from public sour
 ## Icon
 
 Redraw it with `swift Scripts/MakeIcon.swift <folder>.iconset && iconutil -c icns <folder>.iconset -o Resources/AppIcon.icns`.
+
+## License
+
+Lime is released under the [MIT License](LICENSE). The bundled media tools and Sparkle keep their own licences; see `Resources/Licenses`.
+
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Please report security problems privately as described in [SECURITY.md](SECURITY.md).
