@@ -1,5 +1,5 @@
 <p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/header/glow.svg?title=Lime&amp;subtitle=Drag+a+file%2C+tap+a+key%2C+pick+a+petal.&amp;logo=https%3A%2F%2Fraw.githubusercontent.com%2FLumenJSN%2FLime%2Fmain%2F.github%2Flime-icon.png&amp;accent=a3e635&amp;glow=a3e635&amp;align=left&amp;font=geist-mono&amp;border=false&amp;mode=dark" /><img alt="Lime" src="https://shieldcn.dev/header/glow.svg?title=Lime&amp;subtitle=Drag+a+file%2C+tap+a+key%2C+pick+a+petal.&amp;logo=https%3A%2F%2Fraw.githubusercontent.com%2FLumenJSN%2FLime%2Fmain%2F.github%2Flime-icon.png&amp;accent=a3e635&amp;glow=a3e635&amp;align=left&amp;font=geist-mono&amp;border=false&amp;mode=light" /></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset=".github/header-dark.png" /><img alt="Lime: drag a file, tap a key, pick a petal." src=".github/header-light.png" /></picture>
 </p>
 
 <p align="center">
@@ -16,7 +16,11 @@ A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to co
 
 </div>
 
-https://github.com/user-attachments/assets/c3fe106b-40b3-4420-bfbd-e6cb639224f9
+<p align="center">
+  <a href="https://github.com/user-attachments/assets/c3fe106b-40b3-4420-bfbd-e6cb639224f9"><img src=".github/demo.webp" width="720" alt="Tap Shift while dragging a file to open the convert wheel, Command for the tools wheel." /></a>
+  <br />
+  <sub><a href="https://github.com/user-attachments/assets/c3fe106b-40b3-4420-bfbd-e6cb639224f9">Watch the full demo (47 s)</a></sub>
+</p>
 
 ## Getting started
 
