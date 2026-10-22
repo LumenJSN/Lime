@@ -1,50 +1,92 @@
 {
-  "fill" : {
-    "automatic-gradient" : "srgb:0.40000,0.75000,0.12000,1.00000"
-  },
-  "groups" : [
+  "features": [
+    "refractivity",
+    "specular-location"
+  ],
+  "fill-specializations": [
     {
-      "layers" : [
-        {
-          "fill" : {
-            "solid" : "srgb:0.95000,1.00000,0.80000,1.00000"
-          },
-          "glass" : true,
-          "image-name" : "segments.svg",
-          "name" : "segments"
-        }
-      ],
-      "shadow" : {
-        "kind" : "layer-color",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.2
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.78,0.93,0.36,1",
+          "display-p3:0.30,0.66,0.10,1"
+        ]
       }
     },
     {
-      "layers" : [
-        {
-          "fill" : {
-            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
-          },
-          "glass" : true,
-          "image-name" : "rind.svg",
-          "name" : "rind"
-        }
-      ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.25
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.16,0.26,0.07,1",
+          "display-p3:0.04,0.08,0.02,1"
+        ]
       }
     }
   ],
-  "supported-platforms" : {
-    "squares" : "shared"
+  "groups": [
+    {
+      "blur-material": 0.4,
+      "layers": [
+        {
+          "fill": {
+            "solid": "display-p3:1,1,1,1"
+          },
+          "glass": true,
+          "image-name": "rind.svg",
+          "name": "rind"
+        }
+      ],
+      "lighting": "individual",
+      "name": "rind",
+      "refractivity": {
+        "depth": 0.6,
+        "enabled": true,
+        "strength": 0.6
+      },
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.45
+      },
+      "specular": true,
+      "specular-highlight-placement": "outside",
+      "translucency": {
+        "enabled": true,
+        "value": 0.6
+      }
+    },
+    {
+      "blur-material": 0.5,
+      "layers": [
+        {
+          "fill": {
+            "linear-gradient": [
+              "display-p3:1,1,1,1",
+              "display-p3:0.93,1.00,0.80,1"
+            ]
+          },
+          "glass": true,
+          "image-name": "segments.svg",
+          "name": "segments"
+        }
+      ],
+      "lighting": "individual",
+      "name": "segments",
+      "refractivity": {
+        "depth": 0.85,
+        "enabled": true,
+        "strength": 0.9
+      },
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.7
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
   }
 }
