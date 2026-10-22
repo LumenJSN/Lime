@@ -47,7 +47,7 @@ then
 fi
 
 # The volume icon goes in last: Finder removes it while it saves the layout.
-cp "$ROOT/Resources/AppIcon.icns" "/Volumes/$VOLUME/.VolumeIcon.icns"
+cp "$APP/Contents/Resources/AppIcon.icns" "/Volumes/$VOLUME/.VolumeIcon.icns"
 SetFile -a C "/Volumes/$VOLUME"
 sync
 hdiutil detach "/Volumes/$VOLUME" -quiet

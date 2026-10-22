@@ -27,6 +27,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <key>CFBundleIdentifier</key><string>local.Lime</string>
 <key>CFBundleExecutable</key><string>Lime</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
+<key>CFBundleIconName</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$VERSION</string>
 <key>CFBundleVersion</key><string>$VERSION</string>
@@ -46,9 +47,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <key>NSRemovableVolumesUsageDescription</key><string>Lime saves converted files beside the originals on external drives.</string>
 </dict></plist>
 PLIST
-cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/Resources/PagesTemplate.pages" "$APP/Contents/Resources/PagesTemplate.pages"
-xcrun actool "$ROOT/Resources/Assets.xcassets" --compile "$APP/Contents/Resources" --platform macosx --minimum-deployment-target 13.0 \
+# AppIcon.icon is an Icon Composer document: macOS 26+ draws it as Liquid Glass,
+# older systems get the flattened AppIcon.icns that actool writes beside it.
+xcrun actool "$ROOT/Resources/Assets.xcassets" "$ROOT/Resources/AppIcon.icon" --compile "$APP/Contents/Resources" --platform macosx --minimum-deployment-target 13.0 --app-icon AppIcon \
   --output-partial-info-plist "$BUILD/assets-info.plist" >/dev/null
 mkdir -p "$APP/Contents/Resources/Tools" "$APP/Contents/Resources/Licenses"
 cp "$ROOT/Resources/Tools/ffmpeg" "$ROOT/Resources/Tools/ffprobe" "$APP/Contents/Resources/Tools/"
