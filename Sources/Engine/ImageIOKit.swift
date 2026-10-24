@@ -105,13 +105,27 @@ enum ImageIOKit {
                       metadata: [String: Any] = [:], pngLevel: Int = 6) async throws {
         switch format {
         case "webp":
-            let intermediate = destination.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + ".png")
+            // An uncompressed TIFF hands the pixels over without spending time on
+            // deflate. ImageIO stores TIFF transparency premultiplied, which ffmpeg
+            // reads as straight and darkens, so see-through pictures go as PNG.
+            let opaque = [.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo)
+            let intermediate = destination.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + (opaque ? ".tiff" : ".png"))
             defer { try? FileManager.default.removeItem(at: intermediate) }
-            try writeImageIO(image, to: intermediate, format: "png", quality: 1, metadata: [:])
+            if opaque {
+                try writeImageIO(image, to: intermediate, format: "tiff", quality: 1,
+                                 metadata: [kCGImagePropertyTIFFDictionary as String: [kCGImagePropertyTIFFCompression as String: 1]])
+            } else {
+                try writeImageIO(image, to: intermediate, format: "png", quality: 1, metadata: [:])
+            }
             let lossless = quality >= 0.999
+            // libwebp's default effort (4) is about twice as fast as its slowest
+            // (6), for files about a tenth larger at usual quality and a quarter
+            // larger at low quality, so the slowest is kept for Smaller File and
+            // Smallest File.
+            let slowest = pngLevel >= 8 || quality <= ConvertPrefs.Quality.smaller.value
             try await FFmpeg.run(["-i", intermediate.path, "-frames:v", "1", "-c:v", "libwebp",
                                   "-lossless", lossless ? "1" : "0", "-quality", String(Int(quality * 100)),
-                                  "-compression_level", "6", destination.path], duration: 0, context: nil)
+                                  "-compression_level", slowest ? "6" : "4", destination.path], duration: 0, context: nil)
         case "pdf":
             try writePDF([image], to: destination)
         case "jpg", "bmp":
@@ -131,6 +145,18 @@ enum ImageIOKit {
         props[kCGImageDestinationLossyCompressionQuality as String] = quality
         CGImageDestinationAddImage(writer, image, props as CFDictionary)
         guard CGImageDestinationFinalize(writer) else { throw LimeError("Lime couldn't finish writing the picture.") }
+    }
+
+    /// A JPEG that needs no turning goes into a PDF as its original bytes,
+    /// with no decode or re-encode; anything else is decoded as usual.
+    static func pdfImage(_ url: URL) throws -> CGImage {
+        // An undecoded JPEG image from ImageIO is written to the PDF as its own data.
+        if FormatCatalog.format(of: url) == "jpg", (properties(url)[kCGImagePropertyOrientation as String] as? Int ?? 1) == 1,
+           let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+           let image = CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCache: false] as CFDictionary) {
+            return image
+        }
+        return try load(url)
     }
 
     /// One page per image at 72 points per pixel-inch, matching Preview.

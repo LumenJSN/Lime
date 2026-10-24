@@ -10,6 +10,9 @@ final class OperationProgressModel: ObservableObject {
     @Published var saved = 0
     @Published var phase: Phase = .running
     @Published var outputs: [URL] = []
+    /// Seconds from the drop to the last file saved, once finished.
+    @Published var elapsed: TimeInterval?
+    let started = ProcessInfo.processInfo.systemUptime
     var onCancel: (() -> Void)?
     var onClose: (() -> Void)?
     init(title: String, total: Int) { self.title = title; self.total = total }
@@ -21,6 +24,13 @@ final class OperationProgressModel: ObservableObject {
         case .failed(let message): return message
         case .cancelled: return "Cancelled"
         }
+    }
+
+    /// "0.4s" under ten seconds, "13s" under a minute, then "1m 15s".
+    nonisolated static func elapsedLabel(_ seconds: TimeInterval) -> String {
+        if seconds < 9.95 { return String(format: "%.1fs", max(0.1, seconds)) }
+        let whole = Int(seconds.rounded())
+        return whole < 60 ? "\(whole)s" : String(format: "%dm %02ds", whole / 60, whole % 60)
     }
 }
 
@@ -41,6 +51,10 @@ struct OperationProgressView: View {
                 Text(headline).font(.system(size: 13, weight: .medium)).lineLimit(1)
                 Spacer(minLength: 0)
                 if case .finished = model.phase {
+                    if let elapsed = model.elapsed {
+                        Text(OperationProgressModel.elapsedLabel(elapsed))
+                            .font(.system(size: 11, weight: .medium).monospacedDigit()).foregroundStyle(.secondary)
+                    }
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(Color(nsColor: Brand.accent))
                 } else if case .failed = model.phase {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)

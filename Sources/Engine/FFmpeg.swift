@@ -14,6 +14,24 @@ struct MediaProbe: Sendable {
     var sampleRate = 0
     var bitsPerSample = 0
     var sampleFormat = ""
+    /// ffprobe codec and pixel format names, such as "h264" and "yuv420p".
+    var videoCodec = ""
+    var pixelFormat = ""
+    var audioCodec = ""
+    /// Display rotation in degrees from the stream's side data.
+    var rotation = 0
+    /// ffprobe's container name, such as "matroska,webm".
+    var container = ""
+    /// When the file and its picture start, and how long the picture runs.
+    var startTime: Double = 0
+    var videoStart: Double = 0
+    var videoDuration: Double = 0
+    /// The picture's clock units, track kinds in file order, a hash of the
+    /// decoder setup and the stored frame count (0 when not stored).
+    var videoTimeBase = ""
+    var streamKinds: [String] = []
+    var videoExtradata = ""
+    var videoFrames = 0
     var tags: [String: String] = [:]
 }
 
@@ -37,16 +55,19 @@ enum FFmpeg {
 
     static func probe(_ url: URL) async throws -> MediaProbe {
         let tool = try BundledTool.url("ffprobe")
-        let result = try await ProcessRunner.run(tool, ["-v", "error", "-print_format", "json", "-show_format", "-show_streams"] + inputGuards + [url.path])
+        let result = try await ProcessRunner.run(tool, ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", "-show_data_hash", "md5"] + inputGuards + [url.path])
         guard let json = try JSONSerialization.jsonObject(with: result.stdout) as? [String: Any] else {
             throw LimeError("Lime couldn't tell how long \(url.lastPathComponent) is.")
         }
         var info = MediaProbe()
         let format = json["format"] as? [String: Any] ?? [:]
         info.duration = Double(format["duration"] as? String ?? "") ?? 0
+        info.container = format["format_name"] as? String ?? ""
+        info.startTime = Double(format["start_time"] as? String ?? "") ?? 0
         if let tags = format["tags"] as? [String: String] { info.tags = tags.reduce(into: [:]) { $0[$1.key.lowercased()] = $1.value } }
         for stream in json["streams"] as? [[String: Any]] ?? [] {
             let kind = stream["codec_type"] as? String
+            info.streamKinds.append(kind ?? "")
             let disposition = stream["disposition"] as? [String: Any]
             if kind == "video", (disposition?["attached_pic"] as? Int ?? 0) == 0, !info.hasVideo {
                 info.hasVideo = true
@@ -54,8 +75,18 @@ enum FFmpeg {
                 let sideData = stream["side_data_list"] as? [[String: Any]] ?? []
                 let rotation = sideData.compactMap { $0["rotation"] as? Int }.first ?? Int((stream["tags"] as? [String: String])?["rotate"] ?? "0") ?? 0
                 if abs(rotation) % 180 == 90 { swap(&w, &h) }
+                info.rotation = rotation
                 info.width = w; info.height = h
+                info.videoCodec = stream["codec_name"] as? String ?? ""
+                info.pixelFormat = stream["pix_fmt"] as? String ?? ""
                 info.videoBitrate = Int(stream["bit_rate"] as? String ?? "") ?? 0
+                info.videoStart = Double(stream["start_time"] as? String ?? "") ?? 0
+                info.videoTimeBase = stream["time_base"] as? String ?? ""
+                info.videoExtradata = stream["extradata_hash"] as? String ?? ""
+                info.videoFrames = Int(stream["nb_frames"] as? String ?? "") ?? 0
+                // Matroska stores no stream duration, only a tag with the picture's end time.
+                let endTag = (stream["tags"] as? [String: String])?.first { $0.key.uppercased().hasPrefix("DURATION") }?.value
+                info.videoDuration = Double(stream["duration"] as? String ?? "") ?? endTag.flatMap(clockSeconds).map { max(0, $0 - info.videoStart) } ?? 0
                 if let rate = stream["avg_frame_rate"] as? String {
                     let parts = rate.split(separator: "/").compactMap { Double($0) }
                     if parts.count == 2, parts[1] > 0, parts[0] > 0 { info.frameRate = parts[0] / parts[1] }
@@ -64,6 +95,7 @@ enum FFmpeg {
             } else if kind == "audio", !info.hasAudio {
                 info.hasAudio = true
                 info.remixChannels = stream["channels"] as? Int ?? 0
+                info.audioCodec = stream["codec_name"] as? String ?? ""
                 info.sampleRate = Int(stream["sample_rate"] as? String ?? "") ?? 0
                 info.encodeKbps = Int(stream["bit_rate"] as? String ?? "") ?? 0
                 info.bitsPerSample = Int(stream["bits_per_raw_sample"] as? String ?? "") ?? (stream["bits_per_sample"] as? Int ?? 0)
@@ -71,8 +103,10 @@ enum FFmpeg {
                 if info.duration == 0 { info.duration = Double(stream["duration"] as? String ?? "") ?? 0 }
             }
         }
-        if info.videoBitrate == 0, info.hasVideo, info.duration > 0,
-           let total = Int(format["bit_rate"] as? String ?? "") { info.videoBitrate = max(0, total - info.encodeKbps) }
+        let total = Int(format["bit_rate"] as? String ?? "")
+        if info.videoBitrate == 0, info.hasVideo, info.duration > 0, let total { info.videoBitrate = max(0, total - info.encodeKbps) }
+        // Ogg and Matroska give no bitrate per stream; a sound-only file's overall rate is close.
+        if info.encodeKbps == 0, info.hasAudio, !info.hasVideo, let total { info.encodeKbps = total }
         return info
     }
 
@@ -82,12 +116,13 @@ enum FFmpeg {
                     trustedInputs: Bool = false) async throws {
         let tool = try BundledTool.url("ffmpeg")
         let args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-progress", "pipe:1", "-nostats"] + (trustedInputs ? arguments : guarded(arguments))
+        let report = context?.reporter()
         try await ProcessRunner.run(tool, args, onOutput: { text in
-            guard let context, duration > 0 else { return }
+            guard let report, duration > 0 else { return }
             for line in text.split(separator: "\n") where line.hasPrefix("out_time_us=") {
                 if let micro = Double(line.dropFirst(12)) {
                     let fraction = min(1, max(0, micro / 1_000_000 / duration))
-                    context.progress(span.lowerBound + (span.upperBound - span.lowerBound) * fraction)
+                    report(span.lowerBound + (span.upperBound - span.lowerBound) * fraction)
                 }
             }
         })
@@ -162,6 +197,13 @@ enum FFmpeg {
             return "scale=-2:\(options.maxVideoHeight)"
         }
         return "pad=ceil(iw/2)*2:ceil(ih/2)*2"
+    }
+
+    /// Seconds in an "HH:MM:SS.fraction" time.
+    static func clockSeconds(_ text: String) -> Double? {
+        let parts = text.split(separator: ":").compactMap { Double($0) }
+        guard parts.count == 3 else { return nil }
+        return parts[0] * 3600 + parts[1] * 60 + parts[2]
     }
 
     static func timestamp(_ seconds: Double) -> String { String(format: "%.3f", max(0, seconds)) }

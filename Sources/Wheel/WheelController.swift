@@ -86,8 +86,10 @@ final class WheelController {
     /// Bumped on every show/dismiss so a stale drag-end timer cannot close a newer wheel.
     private var generation = 0
     /// The drop arrives after the mouse-up that ends the drag, so the end of
-    /// the drag only schedules the dismissal.
+    /// a drag over a petal only schedules the dismissal.
     nonisolated static let dropGrace: TimeInterval = 0.6
+    /// Wheels already worked out for the files on screen, by mode.
+    private var itemCache: [WheelMode: [WheelItem]] = [:]
     var onChoose: ((WheelOperation, [URL], NSPoint) -> Void)?
     var isVisible: Bool { panel?.isVisible == true && model.presented }
 
@@ -105,6 +107,7 @@ final class WheelController {
 
     func show(files: [URL], mode: WheelMode, at point: NSPoint, keyboard: Bool = false) {
         self.files = files
+        itemCache = [:]
         let panel = self.panel ?? makePanel()
         setMode(mode)
         applySurface()
@@ -133,9 +136,11 @@ final class WheelController {
     }
 
     func setMode(_ mode: WheelMode) {
-        guard model.mode != mode || model.items.isEmpty || model.items != WheelCatalog.items(for: files, mode: mode, extras: settings.extraTools) else { return }
+        let items = itemCache[mode] ?? WheelCatalog.items(for: files, mode: mode, extras: settings.extraTools)
+        itemCache[mode] = items
+        guard model.mode != mode || model.items.isEmpty || model.items != items else { return }
         model.mode = mode
-        model.items = WheelCatalog.items(for: files, mode: mode, extras: settings.extraTools)
+        model.items = items
         model.selected = nil
     }
 
@@ -168,7 +173,9 @@ final class WheelController {
     }
 
     /// The system drag ended; close the wheel unless a drop lands first.
-    func dragEnded(after delay: TimeInterval = WheelController.dropGrace) {
+    /// Only a highlighted petal can take a drop, so without one it closes now.
+    func dragEnded(after delay: TimeInterval? = nil) {
+        let delay = delay ?? (model.selected == nil ? 0 : Self.dropGrace)
         let pending = generation
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             MainActor.assumeIsolated {
@@ -191,6 +198,24 @@ final class WheelController {
                 if !self.model.presented { panel.orderOut(nil); panel.alphaValue = 1 }
             }
         })
+    }
+
+    /// Builds the panel and draws a wheel into it off screen, so the first
+    /// drag after launch doesn't wait for the window, fonts and symbols.
+    func prewarm() {
+        guard panel == nil else { return }
+        let panel = makePanel()
+        model.items = WheelCatalog.items(for: [URL(fileURLWithPath: "/prewarm.jpg")], mode: .tools, extras: true)
+        model.idleLabel = "0 KB"
+        panel.alphaValue = 0
+        panel.setFrameOrigin(NSPoint(x: -20_000, y: -20_000))
+        panel.orderFrontRegardless()
+        panel.contentView?.layoutSubtreeIfNeeded()
+        panel.displayIfNeeded()
+        panel.orderOut(nil)
+        panel.alphaValue = 1
+        model.items = []
+        model.idleLabel = ""
     }
 
     private func makePanel() -> WheelPanel {
@@ -225,9 +250,7 @@ final class WheelController {
             let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
             return values?.isDirectory == true ? 0 : Int64(values?.fileSize ?? 0)
         }
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        let total = formatter.string(fromByteCount: sizes.reduce(0, +))
+        let total = ByteCountFormatter.string(fromByteCount: sizes.reduce(0, +), countStyle: .file)
         if files.count == 1 {
             return (try? files[0].resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true ? "FOLDER" : total
         }

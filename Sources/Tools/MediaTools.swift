@@ -89,14 +89,16 @@ enum MediaTools {
         let info = try await FFmpeg.probe(source)
         guard info.hasAudio else { throw LimeError("This file has no sound.") }
         let i = options.levelTargetLUFS, lra = options.levelRangeLU, tp = options.levelPeakDB
-        // Pass 1 measures; pass 2 applies a linear gain where possible.
         let ffmpeg = try BundledTool.url("ffmpeg")
-        let measure = try await ProcessRunner.run(ffmpeg, FFmpeg.guarded(["-nostdin", "-hide_banner", "-i", source.path, "-vn", "-af",
-                                                           "loudnorm=I=\(i):LRA=\(lra):TP=\(tp):print_format=json", "-f", "null", "-"]))
-        var filter = "loudnorm=I=\(i):LRA=\(lra):TP=\(tp)"
-        if let start = measure.stderr.range(of: "{", options: .backwards), let json = try? JSONSerialization.jsonObject(with: Data(measure.stderr[start.lowerBound...].utf8)) as? [String: String],
-           let mi = json["input_i"], let mlra = json["input_lra"], let mtp = json["input_tp"], let mth = json["input_thresh"], let off = json["target_offset"] {
-            filter += ":measured_I=\(mi):measured_LRA=\(mlra):measured_TP=\(mtp):measured_thresh=\(mth):offset=\(off):linear=true"
+        // Pass 1 measures. ebur128 is several times quicker than loudnorm, and
+        // most audio only needs its volume turned, which costs next to nothing.
+        let quick = try await ProcessRunner.run(ffmpeg, FFmpeg.guarded(["-nostdin", "-hide_banner", "-nostats", "-i", source.path, "-vn",
+                                                         "-af", "ebur128=peak=true:framelog=quiet", "-f", "null", "-"]))
+        let filter: String
+        if let measure = Loudness.parse(quick.stderr), let gain = Loudness.linearGain(measure, target: i, range: lra, peak: tp) {
+            filter = String(format: "volume=%.1fdB", gain)
+        } else {
+            filter = try await loudnormFilter(source, ffmpeg: ffmpeg, target: i, range: lra, peak: tp)
         }
         context.progress(0.4)
         let out = context.output(for: source, label: "normalized", ext: format(source))
@@ -108,6 +110,17 @@ enum MediaTools {
             args += ["-map", "0:v?", "-map", "0:a:0", "-c:v", "copy", "-af", filter, "-ar", "\(sampleRate)", "-c:a", "aac_at", "-b:a", "192k"]
         }
         try await FFmpeg.run(args + [out.path], duration: info.duration, context: context, span: 0.4...1)
+    }
+
+    /// loudnorm's own measurement, fed back for an accurate dynamic second pass.
+    private static func loudnormFilter(_ source: URL, ffmpeg: URL, target i: Double, range lra: Double, peak tp: Double) async throws -> String {
+        let measure = try await ProcessRunner.run(ffmpeg, FFmpeg.guarded(["-nostdin", "-hide_banner", "-i", source.path, "-vn", "-af",
+                                                           "loudnorm=I=\(i):LRA=\(lra):TP=\(tp):print_format=json", "-f", "null", "-"]))
+        var filter = "loudnorm=I=\(i):LRA=\(lra):TP=\(tp)"
+        if let json = Loudness.loudnormReport(measure.stderr), let mi = json["input_i"], let mlra = json["input_lra"], let mtp = json["input_tp"], let mth = json["input_thresh"], let off = json["target_offset"] {
+            filter += ":measured_I=\(mi):measured_LRA=\(mlra):measured_TP=\(mtp):measured_thresh=\(mth):offset=\(off):linear=true"
+        }
+        return filter
     }
 
     static func trim(_ source: URL, options: ToolChoices, context: OperationContext) async throws {
@@ -169,14 +182,23 @@ enum MediaTools {
         var infos: [MediaProbe] = []
         for url in ordered { infos.append(try await FFmpeg.probe(url)) }
         guard infos.allSatisfy(\.hasVideo) else { throw LimeError("Only clips with picture can be joined.") }
+        if StreamCopy.canJoin(infos), try await joinCopying(ordered, infos: infos, context: context) { return }
         let w = infos[0].width / 2 * 2, h = infos[0].height / 2 * 2
         let fps = min(60, max(10, infos[0].frameRate))
+        let spans = pictureSpans(infos)
         var inputs: [String] = [], filters: [String] = [], streams = ""
         for url in ordered { inputs += ["-i", url.path] }
+        // Each clip's sound is fitted to its picture, as when copying, so
+        // sound that starts early or runs long doesn't push later clips out of sync.
         for (i, info) in infos.enumerated() {
-            filters.append("[\(i):v:0]scale=\(w):\(h):force_original_aspect_ratio=decrease,pad=\(w):\(h):(ow-iw)/2:(oh-ih)/2,setsar=1,fps=\(String(format: "%.3f", fps)),format=yuv420p[v\(i)]")
-            if info.hasAudio { filters.append("[\(i):a:0]aformat=sample_rates=48000:channel_layouts=stereo[a\(i)]") }
-            else { filters.append("anullsrc=r=48000:cl=stereo,atrim=0:\(String(format: "%.3f", info.duration))[a\(i)]") }
+            let length = seconds(spans[i].length)
+            filters.append("[\(i):v:0]setpts=PTS-STARTPTS,scale=\(w):\(h):force_original_aspect_ratio=decrease,pad=\(w):\(h):(ow-iw)/2:(oh-ih)/2,setsar=1,fps=\(String(format: "%.3f", fps)),format=yuv420p[v\(i)]")
+            if info.hasAudio {
+                filters.append("[\(i):a:0]asetpts=PTS-\(seconds(spans[i].lead))/TB,aresample=48000:async=1:first_pts=0,aformat=sample_rates=48000:channel_layouts=stereo,"
+                    + "apad=whole_dur=\(length),atrim=end=\(length)[a\(i)]")
+            } else {
+                filters.append("anullsrc=r=48000:cl=stereo,atrim=0:\(length)[a\(i)]")
+            }
             streams += "[v\(i)][a\(i)]"
         }
         filters.append("\(streams)concat=n=\(ordered.count):v=1:a=1[v][a]")
@@ -184,7 +206,68 @@ enum MediaTools {
         var info = infos[0]; info.width = w; info.height = h
         let args = inputs + ["-filter_complex", filters.joined(separator: ";"), "-map", "[v]", "-map", "[a]"]
             + FFmpeg.videoCodec("mp4", options: context.optionsForFormat("mp4"), info: info) + [out.path]
-        try await FFmpeg.run(args, duration: infos.map(\.duration).reduce(0, +), context: context)
+        try await FFmpeg.run(args, duration: spans.map(\.length).reduce(0, +), context: context)
+    }
+
+    private static func seconds(_ value: Double) -> String { String(format: "%.6f", value) }
+
+    /// Where each clip's picture starts after ffmpeg sets the file's clock
+    /// to its earliest stream, and how long the picture runs.
+    private static func pictureSpans(_ infos: [MediaProbe]) -> [(lead: Double, length: Double)] {
+        infos.map { info in
+            let lead = info.videoStart - info.startTime
+            return (lead, info.videoDuration > 0 ? info.videoDuration : info.duration - lead)
+        }
+    }
+
+    /// Joins matching clips with their pictures copied back to back. Each
+    /// segment spans its clip's picture; the clip's sound is moved onto that
+    /// span, fitted to its length and encoded once. Copied AAC would bring
+    /// every clip's warm-up samples along and leave a short gap at each seam.
+    /// Returns false when ffmpeg won't copy the pictures, or the result
+    /// doesn't run as long as the clips, so the caller re-encodes instead.
+    private static func joinCopying(_ clips: [URL], infos: [MediaProbe], context: OperationContext) async throws -> Bool {
+        let lengths = pictureSpans(infos).map(\.length)
+        let list = context.scratch("txt")
+        let lines = clips.indices.map { i in
+            "file '" + clips[i].path.replacingOccurrences(of: "'", with: "'\\''") + "'\ninpoint " + seconds(infos[i].videoStart)
+                + "\nduration " + seconds(lengths[i])
+        }
+        try lines.joined(separator: "\n").appending("\n").write(to: list, atomically: true, encoding: .utf8)
+        let out = context.output(for: clips[0], label: "joined", ext: "mp4")
+        // The concat demuxer hands these allow-lists on to every clip it opens.
+        // Without -copyts ffmpeg would also move the picture by the first
+        // clip's sound start, which the concat demuxer reports as its own.
+        var args = ["-copyts", "-protocol_whitelist", "file,pipe", "-format_whitelist", FFmpeg.inputFormats + ",concat",
+                    "-f", "concat", "-safe", "0", "-i", list.path]
+        if infos[0].hasAudio {
+            args += clips.flatMap { FFmpeg.inputGuards + ["-i", $0.path] }
+            // With file times kept, each picture starts at its own start time.
+            let fitted = clips.indices.map { i in
+                "[\(i + 1):a:0]asetpts=PTS-\(seconds(infos[i].videoStart))/TB,aresample=async=1:first_pts=0,"
+                    + "apad=whole_dur=\(seconds(lengths[i])),atrim=end=\(seconds(lengths[i]))[a\(i)]"
+            }
+            let sound = fitted.joined(separator: ";") + ";" + lengths.indices.map { "[a\($0)]" }.joined() + "concat=n=\(clips.count):v=0:a=1[a]"
+            args += ["-filter_complex", sound, "-map", "0:v:0", "-map", "[a]", "-c:v", "copy", "-c:a", "aac_at", "-b:a", "192k"]
+        } else {
+            args += ["-map", "0:v:0", "-c:v", "copy"]
+        }
+        args += StreamCopy.videoTag(infos[0].videoCodec, into: "mp4") + ["-movflags", "+faststart", out.path]
+        do {
+            let expected = lengths.reduce(0, +)
+            try await FFmpeg.run(args, duration: expected, context: context, trustedInputs: true)
+            // A mismatch nothing above caught would show as a picture of the wrong length.
+            let joined = try await FFmpeg.probe(out)
+            let slack = 0.05 + Double(clips.count) / max(1, infos[0].frameRate)
+            guard abs(joined.videoDuration - expected) <= slack else { throw LimeError("The copied pictures came out \(joined.videoDuration) s long.") }
+            return true
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try? FileManager.default.removeItem(at: out)
+            context.discard(out)
+            return false
+        }
     }
 
     static func snapshots(_ source: URL, options: ToolChoices, context: OperationContext) async throws {
@@ -250,12 +333,12 @@ enum MediaTools {
             guard let image = options.posterURL else { throw LimeError("Pick a picture for the poster first.") }
             args = ["-loop", "1", "-framerate", "2", "-i", image.path, "-i", source.path, "-filter_complex",
                     "[0:v]scale=\(size.0):\(size.1):force_original_aspect_ratio=decrease,pad=\(size.0):\(size.1):(ow-iw)/2:(oh-ih)/2:black,format=yuv420p[v]",
-                    "-map", "[v]", "-map", "1:a:0", "-shortest", "-c:v", "h264_videotoolbox", "-b:v", "1500k", "-r", "2"]
+                    "-map", "[v]", "-map", "1:a:0", "-shortest", "-c:v", "h264_videotoolbox", "-allow_sw", "1", "-b:v", "1500k", "-r", "2"]
         } else {
             let waveHeight = size.1 / 3
             args = ["-i", source.path, "-filter_complex",
                     "[0:a:0]aformat=channel_layouts=mono,showwaves=s=\(size.0)x\(waveHeight):mode=cline:rate=30:colors=0x5CB80D:scale=sqrt,format=yuva420p[w];color=c=black:s=\(size.0)x\(size.1):r=30[bg];[bg][w]overlay=0:(H-h)/2:shortest=1,format=yuv420p[v]",
-                    "-map", "[v]", "-map", "0:a:0", "-c:v", "h264_videotoolbox", "-b:v", "4000k"]
+                    "-map", "[v]", "-map", "0:a:0", "-c:v", "h264_videotoolbox", "-allow_sw", "1", "-b:v", "4000k"]
         }
         args += ["-c:a", "aac_at", "-b:a", "192k", "-movflags", "+faststart", out.path]
         try await FFmpeg.run(args, duration: info.duration, context: context)

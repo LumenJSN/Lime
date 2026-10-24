@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BUILD="${LIME_BUILD_DIR:-$ROOT/.build}"
 APP="${LIME_APP_PATH:-$ROOT/../Lime.app}"
-VERSION="1.1.5"
+VERSION="1.2.0"
 "$ROOT/Scripts/FetchSparkle.sh"
 SPARKLE="$ROOT/.deps/Sparkle"
 mkdir -p "$BUILD/module-cache"
@@ -12,12 +12,21 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 SOURCES=()
 while IFS= read -r -d '' file; do SOURCES+=("$file"); done < <(find "$ROOT/Sources" -name '*.swift' -print0 | sort -z)
-swiftc -swift-version 5 -O -parse-as-library -target arm64-apple-macosx13.0 -module-cache-path "$BUILD/module-cache" \
-  "${SOURCES[@]}" -o "$APP/Contents/MacOS/Lime" \
-  -framework AppKit -framework SwiftUI -framework AVFoundation -framework AVKit -framework PDFKit -framework Quartz \
-  -framework Vision -framework CoreImage -framework QuickLookUI -framework QuickLookThumbnailing \
-  -framework ServiceManagement -framework UniformTypeIdentifiers -framework ImageIO -framework WebKit \
-  -F "$SPARKLE" -framework Sparkle -Xlinker -rpath -Xlinker @executable_path/../Frameworks
+# One binary per architecture, joined so the same app runs on Apple silicon
+# and Intel. LIME_ARCHS="arm64" builds just one for quicker local runs.
+ARCHS="${LIME_ARCHS:-arm64 x86_64}"
+SLICES=()
+for arch in $ARCHS; do
+  mkdir -p "$BUILD/$arch"
+  swiftc -swift-version 5 -O -parse-as-library -target "$arch-apple-macosx13.0" -module-cache-path "$BUILD/module-cache" \
+    "${SOURCES[@]}" -o "$BUILD/$arch/Lime" \
+    -framework AppKit -framework SwiftUI -framework AVFoundation -framework AVKit -framework PDFKit -framework Quartz \
+    -framework Vision -framework CoreImage -framework QuickLookUI -framework QuickLookThumbnailing \
+    -framework ServiceManagement -framework UniformTypeIdentifiers -framework ImageIO -framework WebKit \
+    -F "$SPARKLE" -framework Sparkle -Xlinker -rpath -Xlinker @executable_path/../Frameworks
+  SLICES+=("$BUILD/$arch/Lime")
+done
+lipo -create "${SLICES[@]}" -output "$APP/Contents/MacOS/Lime"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

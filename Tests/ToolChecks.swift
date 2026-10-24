@@ -104,6 +104,10 @@ enum ToolChecks {
             await check("redact image", .maskPhoto, [jpg]) { $0.redactions = [MaskBox(rect: CGRect(x: 0.2, y: 0.2, width: 0.3, height: 0.3))]; $0.maskFill = .blur }
             await check("collage", .makeMosaic, [jpg, png, png2]) { $0.collage.style = .featured }
             await check("create pdf", .imagesToPDF, [jpg, png]) { _ in } verify: { r in guard PDFDocument(url: r[0])?.pageCount == 2 else { throw LimeError("pages") } }
+            await check("create pdf keeps jpeg data", .imagesToPDF, [jpg]) { _ in } verify: { r in
+                let pdf = try Data(contentsOf: r[0])
+                guard pdf.range(of: Data("/DCTDecode".utf8)) != nil else { throw LimeError("jpeg was re-encoded") }
+            }
             await check("normalize", .levelAudio, [mp3])
             await check("mute", .silenceVideo, [mp4]) { _ in } verify: { r in
                 guard try await_hasAudio(r[0]) == false else { throw LimeError("audio left") }
@@ -113,7 +117,19 @@ enum ToolChecks {
             await check("crop video", .cropClip, [mp4]) { $0.cropRect = CGRect(x: 0.25, y: 0.25, width: 0.5, height: 0.5) }
             await check("speed", .retimeVideo, [mp4]) { $0.tempoFactor = 2 }
             await check("speed slow", .retimeVideo, [mp4]) { $0.tempoFactor = 0.5 }
+            func joinedLength(_ clips: [URL]) async -> Double {
+                guard let context = try? OperationContext(outputDirectory: root, optionsForFormat: defaults),
+                      let joined = try? await ToolEngine.run(.stitchVideos, files: clips, options: ToolChoices(), context: context).first else { return 0 }
+                return (try? await FFmpeg.probe(joined).videoDuration) ?? 0
+            }
             await check("join", .stitchVideos, [mp4, mp4b])
+            let plainJoin = await joinedLength([mp4, mp4b])
+            expect(abs(plainJoin - 4) < 0.1, "joined picture runs as long as both clips (\(plainJoin) s)")
+            // A clip that counts time in other units can't share the first clip's clock.
+            let ticks = root.appendingPathComponent("ticks.mp4")
+            try await FFmpeg.run(["-i", mp4b.path, "-c", "copy", "-video_track_timescale", "600", ticks.path], duration: 0, context: nil)
+            let mixedJoin = await joinedLength([mp4, ticks])
+            expect(abs(mixedJoin - 4) < 0.1, "clips in other time units join at the right length (\(mixedJoin) s)")
             await check("snapshot one", .grabFrames, [mp4]) { $0.frameGrabTimes = [0.5] }
             await check("snapshots", .grabFrames, [mp4]) { $0.frameGrabTimes = [0.2, 1.0, 1.5] }
             await check("split clips", .sliceVideo, [mp4]) { $0.sliceTimes = [0.7, 1.4] }
@@ -165,6 +181,104 @@ enum ToolChecks {
                 let text = (try? TextRecognition.text(in: url)) ?? ""
                 if text.contains("Lime") && text.contains("텍스트") && text.components(separatedBy: "\n").count >= 2 { passed += 1; print("ok   \(name)") }
                 else { failed.append("\(name): \(text.debugDescription)"); print("FAIL \(name): \(text.debugDescription)") }
+            }
+            // Files run side by side: capped, each with its own progress share, outputs in file order.
+            do {
+                final class Box: @unchecked Sendable { let lock = NSLock(); var running = 0, peak = 0, reports: [Double] = [] }
+                let box = Box()
+                let context = try OperationContext(outputDirectory: root, optionsForFormat: defaults) { v in box.lock.withLock { box.reports.append(v) } }
+                let names = (0..<8).map { root.appendingPathComponent("item\($0).txt") }
+                try await context.forEach(names, limit: 3) { index, url in
+                    box.lock.withLock { box.running += 1; box.peak = max(box.peak, box.running) }
+                    try await Task.sleep(nanoseconds: UInt64(8 - index) * 5_000_000)
+                    _ = context.output(for: url, ext: "txt")
+                    context.progress(1)
+                    box.lock.withLock { box.running -= 1 }
+                }
+                expect(box.peak == 3, "parallel files capped at the limit (peak \(box.peak))")
+                expect(abs((box.reports.max() ?? 0) - 1) < 1e-9 && box.reports == box.reports.sorted(), "progress climbs to 1 across files")
+                expect(context.stagedOutputs.map(\.stem) == (0..<8).map { "item\($0)" }, "outputs keep file order")
+                var thrown = ""
+                do {
+                    try await context.forEach(names, limit: 4) { index, _ in if index == 2 { throw LimeError("bad") } }
+                } catch { thrown = error.localizedDescription }
+                expect(thrown.contains("item2.txt") && thrown.contains("bad"), "a failing file is named in the error")
+            }
+            // Cancelling stops files that haven't started, even while running ones finish.
+            do {
+                final class Box: @unchecked Sendable { let lock = NSLock(); var started = 0 }
+                let box = Box()
+                let context = try OperationContext(outputDirectory: root, optionsForFormat: defaults)
+                let names = (0..<6).map { root.appendingPathComponent("slow\($0).txt") }
+                let job = Task {
+                    try await context.forEach(names, limit: 2) { _, _ in
+                        box.lock.withLock { box.started += 1 }
+                        usleep(150_000)
+                    }
+                }
+                try await Task.sleep(nanoseconds: 50_000_000)
+                job.cancel()
+                _ = try? await job.value
+                expect(box.started == 2, "cancelling starts no more files (\(box.started) started)")
+                let slots = WorkSlots(capacity: 2)
+                let late = Task { () async throws -> Bool in
+                    while !Task.isCancelled { await Task.yield() }
+                    return try await slots.run { true }
+                }
+                late.cancel()
+                let ran = (try? await late.value) ?? false
+                expect(!ran, "a cancelled job doesn't take a free slot")
+            }
+            // Every converted file counts towards the progress, and towards the files saved.
+            do {
+                final class Box: @unchecked Sendable { let lock = NSLock(); var reports: [Double] = [], done: [Int] = [] }
+                let box = Box()
+                let context = try OperationContext(outputDirectory: root, optionsForFormat: defaults,
+                                                   progress: { v in box.lock.withLock { box.reports.append(v) } },
+                                                   filesDone: { n in box.lock.withLock { box.done.append(n) } })
+                _ = try await ConversionEngine.convert([png, png2], to: "jpg", context: context)
+                expect(box.reports.max() == 1 && box.done.max() == 2 && box.done == box.done.sorted(), "converting pictures reports progress and files saved")
+            }
+            // WebP keeps see-through pixels as they are.
+            do {
+                let glass = ImageIOKit.makeContext(width: 8, height: 8)!
+                glass.setFillColor(CGColor(gray: 1, alpha: 0.5))
+                glass.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+                let webp = root.appendingPathComponent("glass.webp"), raw = root.appendingPathComponent("glass.rgba")
+                try await ImageIOKit.write(glass.makeImage()!, to: webp, format: "webp", quality: 1)
+                try await FFmpeg.run(["-i", webp.path, "-f", "rawvideo", "-pix_fmt", "rgba", raw.path], duration: 0, context: nil)
+                let pixel = Array(try Data(contentsOf: raw).prefix(4))
+                expect(pixel.count == 4 && pixel[0] >= 250 && pixel[1] >= 250 && pixel[2] >= 250 && abs(Int(pixel[3]) - 128) <= 2, "webp keeps half-clear white white (\(pixel))")
+            }
+            // Jobs share one pool of slots, and a job waiting for one can be cancelled.
+            do {
+                final class Box: @unchecked Sendable { let lock = NSLock(); var running = 0, peak = 0 }
+                let box = Box(), slots = WorkSlots(capacity: 2)
+                try await withThrowingTaskGroup(of: Void.self) { group in
+                    for _ in 0..<5 {
+                        group.addTask {
+                            try await slots.run {
+                                box.lock.withLock { box.running += 1; box.peak = max(box.peak, box.running) }
+                                try await Task.sleep(nanoseconds: 10_000_000)
+                                box.lock.withLock { box.running -= 1 }
+                            }
+                        }
+                    }
+                    try await group.waitForAll()
+                }
+                expect(box.peak == 2, "jobs share the slot pool (peak \(box.peak))")
+                let single = WorkSlots(capacity: 1)
+                let blocker = Task { try await single.run { try await Task.sleep(nanoseconds: 2_000_000_000) } }
+                try await Task.sleep(nanoseconds: 30_000_000)
+                let waiting = Task { try await single.run { true } }
+                try await Task.sleep(nanoseconds: 30_000_000)
+                waiting.cancel()
+                let cancelled: Bool
+                do { _ = try await waiting.value; cancelled = false } catch { cancelled = error is CancellationError }
+                blocker.cancel()
+                _ = try? await blocker.value
+                let freed = try await single.run { true }
+                expect(cancelled && freed, "a waiting job can be cancelled and slots come back")
             }
             expect(LimeTool.extraTools(for: ["png"]).contains(.copyText) && LimeTool.extraTools(for: ["pdf", "jpg"]) == [.copyText] && LimeTool.extraTools(for: ["mp3"]).isEmpty, "extra tool rules")
             if BackgroundRemoval.isAvailable {

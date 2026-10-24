@@ -15,7 +15,7 @@ enum MediaProxy {
         let proxy = FileManager.default.temporaryDirectory.appendingPathComponent("LimePreview-" + UUID().uuidString + (audioOnly ? ".m4a" : ".mp4"))
         var args = ["-i", url.path]
         if audioOnly { args += ["-vn", "-c:a", "aac_at", "-b:a", "128k"] }
-        else { args += ["-map", "0:v:0", "-map", "0:a?", "-vf", "scale=-2:'min(540,ih)'", "-c:v", "h264_videotoolbox", "-b:v", "1500k", "-pix_fmt", "yuv420p", "-c:a", "aac_at", "-b:a", "128k"] }
+        else { args += ["-map", "0:v:0", "-map", "0:a?", "-vf", "scale=-2:'min(540,ih)'", "-c:v", "h264_videotoolbox", "-allow_sw", "1", "-b:v", "1500k", "-pix_fmt", "yuv420p", "-c:a", "aac_at", "-b:a", "128k"] }
         do { try await FFmpeg.run(args + [proxy.path], duration: 0, context: nil) } catch { return url }
         cache.set(url, proxy)
         return proxy

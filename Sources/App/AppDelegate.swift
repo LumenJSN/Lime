@@ -19,7 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator.onActivityChange = { [weak self] count in self?.menuBar?.setWorking(count > 0) }
         wheel.onChoose = { [weak self] operation, files, point in
             NSLog("[Lime] Drop: %@ -> %@", files.map(\.lastPathComponent).joined(separator: ", "), "\(operation)")
-            self?.coordinator.perform(operation, files: files, at: point)
+            // Answer Finder's drop first; work started inside the drop holds up its drag.
+            DispatchQueue.main.async { self?.coordinator.perform(operation, files: files, at: point) }
         }
         monitor.onTap = { [weak self] files, mode, point in
             guard let self else { return }
@@ -37,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         Updates.shared.start()
+        DispatchQueue.main.async { [weak self] in self?.wheel.prewarm() }
         if !settings.welcomeCompleted || arguments.contains("--welcome") { showWelcome() }
     }
 

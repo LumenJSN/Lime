@@ -6,14 +6,21 @@ import AppKit
 final class DragWatcher {
     /// Live system state; tests substitute their own.
     struct Inputs {
+        private static let drag = NSPasteboard(name: .drag)
         var buttonPressed: () -> Bool = { NSEvent.pressedMouseButtons & 1 != 0 }
         var modifiers: () -> NSEvent.ModifierFlags = { NSEvent.modifierFlags }
         var location: () -> NSPoint = { NSEvent.mouseLocation }
-        var changeCount: () -> Int = { NSPasteboard(name: .drag).changeCount }
+        var changeCount: () -> Int = { Inputs.drag.changeCount }
         var files: () -> [URL] = {
-            (NSPasteboard(name: .drag).readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
+            (Inputs.drag.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
         }
     }
+
+    /// Sampling is quicker while the button is held, so a modifier tap
+    /// during a drag opens the wheel sooner.
+    nonisolated static let idleInterval: TimeInterval = 0.025
+    nonisolated static let pressedInterval: TimeInterval = 0.008
+    private static let tracing = ProcessInfo.processInfo.environment["LIME_TRACE"] != nil
 
     var onTap: (([URL], WheelMode, NSPoint) -> Void)?
     var onDragEnded: (() -> Void)?
@@ -47,7 +54,13 @@ final class DragWatcher {
         }) { monitors.append(local) }
         // Button and modifier state are polled: global monitors cannot see
         // key events without Accessibility access, and drags suppress some events.
-        let poll = Timer(timeInterval: 0.025, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.poll() } }
+        schedule(Self.idleInterval)
+    }
+
+    private func schedule(_ interval: TimeInterval) {
+        guard isRunning, timer?.timeInterval != interval else { return }
+        timer?.invalidate()
+        let poll = Timer(timeInterval: interval, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.poll() } }
         RunLoop.main.add(poll, forMode: .common)
         timer = poll
     }
@@ -72,7 +85,9 @@ final class DragWatcher {
     func poll() {
         let flags = inputs.modifiers().intersection(KeyChord.relevant)
         defer { lastFlags = flags }
-        guard settings.monitoring, inputs.buttonPressed() else {
+        let pressed = settings.monitoring && inputs.buttonPressed()
+        schedule(pressed ? Self.pressedInterval : Self.idleInterval)
+        guard pressed else {
             // Anything on the drag pasteboard now belongs to a finished drag.
             if dragging || pressPoint != nil { reset() } else { baseline = inputs.changeCount() }
             return
@@ -80,7 +95,7 @@ final class DragWatcher {
         if pressPoint == nil { pressPoint = inputs.location() }
         if !dragging {
             let p = inputs.location(), start = pressPoint ?? p
-            if ProcessInfo.processInfo.environment["LIME_TRACE"] != nil { NSLog("[trace] pressed moved=%.0f cc=%d base=%d", hypot(p.x - start.x, p.y - start.y), inputs.changeCount(), baseline) }
+            if Self.tracing { NSLog("[trace] pressed moved=%.0f cc=%d base=%d", hypot(p.x - start.x, p.y - start.y), inputs.changeCount(), baseline) }
             guard hypot(p.x - start.x, p.y - start.y) > 3, inputs.changeCount() != baseline else { return }
             let urls = inputs.files()
             guard !urls.isEmpty else { baseline = inputs.changeCount(); return }
@@ -88,7 +103,7 @@ final class DragWatcher {
             files = urls
         }
         // Trigger on the transition into a configured combination.
-        if ProcessInfo.processInfo.environment["LIME_TRACE"] != nil, flags != lastFlags { NSLog("[trace] flags %lu -> %lu dragging=%d", lastFlags.rawValue, flags.rawValue, dragging ? 1 : 0) }
+        if Self.tracing, flags != lastFlags { NSLog("[trace] flags %lu -> %lu dragging=%d", lastFlags.rawValue, flags.rawValue, dragging ? 1 : 0) }
         guard flags != lastFlags, !flags.isEmpty, let mode = settings.mode(for: flags) else { return }
         onTap?(files, mode, inputs.location())
     }

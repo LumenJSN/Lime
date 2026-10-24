@@ -4,22 +4,16 @@ import Foundation
 enum ConversionEngine {
     static func convert(_ files: [URL], to target: String, context: OperationContext) async throws -> [URL] {
         guard !files.isEmpty else { throw LimeError("Nothing was dropped") }
-        for (index, file) in files.enumerated() {
-            try Task.checkCancellation()
+        let formats = try files.map { file -> String in
             guard let format = FormatCatalog.format(of: file), FormatCatalog.targets(for: format).contains(target) else {
                 throw LimeError("Lime can't turn \(file.lastPathComponent) into \(FormatCatalog.label(target)).")
             }
-            let span = (Double(index) / Double(files.count))...(Double(index + 1) / Double(files.count))
-            context.progressSpan = span
-            do {
-                try await convert(file, from: format, to: target, context: context)
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                throw LimeError(files.count > 1 ? "\(file.lastPathComponent): \(error.localizedDescription)" : error.localizedDescription)
-            }
+            return format
         }
-        context.progressSpan = 0...1
+        try await context.forEach(files, limit: Parallelism.limit(for: formats.map(FormatCatalog.category))) { index, file in
+            try await convert(file, from: formats[index], to: target, context: context)
+            context.progress(1)
+        }
         return try OutputPublisher.publish(context.stagedOutputs)
     }
 

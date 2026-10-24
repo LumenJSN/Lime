@@ -40,7 +40,7 @@ struct WheelView: View {
         .scaleEffect(model.presented ? 1 : 0.7)
         .rotationEffect(.degrees(model.presented ? 0 : -12))
         .opacity(model.presented ? 1 : 0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.74), value: model.presented)
+        .animation(.spring(response: 0.24, dampingFraction: 0.74), value: model.presented)
         .animation(liquid ? .spring(response: 0.26, dampingFraction: 0.72) : .easeOut(duration: 0.09), value: model.selected)
         .animation(.easeInOut(duration: 0.22), value: model.mode)
     }

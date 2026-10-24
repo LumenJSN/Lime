@@ -7,19 +7,13 @@ enum ToolEngine {
         if tool.isAggregate {
             try await runAggregate(tool, files: files, options: options, context: context)
         } else {
-            for (index, file) in files.enumerated() {
-                try Task.checkCancellation()
-                context.progressSpan = (Double(index) / Double(files.count))...(Double(index + 1) / Double(files.count))
-                do {
-                    try await runSingle(tool, file: file, options: options, context: context)
-                } catch is CancellationError {
-                    throw CancellationError()
-                } catch {
-                    throw LimeError(files.count > 1 ? "\(file.lastPathComponent): \(error.localizedDescription)" : error.localizedDescription)
-                }
+            let categories = files.map { FormatCatalog.category(FormatCatalog.format(of: $0) ?? "") }
+            // Background removal holds a large Vision model per file.
+            let limit = tool == .removeBackground ? min(2, Parallelism.limit(for: categories)) : Parallelism.limit(for: categories)
+            try await context.forEach(files, limit: limit) { _, file in
+                try await runSingle(tool, file: file, options: options, context: context)
                 context.progress(1)
             }
-            context.progressSpan = 0...1
         }
         return try OutputPublisher.publish(context.stagedOutputs)
     }

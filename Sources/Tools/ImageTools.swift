@@ -167,7 +167,7 @@ enum ImageTools {
               let pdf = CGContext(consumer: consumer, mediaBox: nil, nil) else { throw LimeError("Lime couldn't write the PDF.") }
         for (index, source) in ordered.enumerated() {
             try Task.checkCancellation()
-            let image = try ImageIOKit.load(source)
+            let image = try ImageIOKit.pdfImage(source)
             let dpi = max(72, ImageIOKit.pixelDPI(source))
             var box = CGRect(x: 0, y: 0, width: Double(image.width) * 72 / dpi, height: Double(image.height) * 72 / dpi)
             pdf.beginPage(mediaBox: &box)

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/LumenJSN/Lime/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/release-v1.1.5.svg?variant=default&amp;size=sm&amp;color=65a30d&amp;logo=lu:Citrus&amp;logoColor=ffffff&amp;mode=dark" /><img alt="latest release" src="https://shieldcn.dev/badge/release-v1.1.5.svg?variant=default&amp;size=sm&amp;color=65a30d&amp;logo=lu:Citrus&amp;logoColor=ffffff&amp;mode=light" /></picture></a>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/macOS-13%2B_Apple_silicon.svg?logo=apple&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="macOS 13+ on Apple silicon" src="https://shieldcn.dev/badge/macOS-13%2B_Apple_silicon.svg?logo=apple&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/macOS-13%2B_Apple_silicon_%26_Intel.svg?logo=apple&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="macOS 13+ on Apple silicon and Intel" src="https://shieldcn.dev/badge/macOS-13%2B_Apple_silicon_%26_Intel.svg?logo=apple&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture>
   <picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/Swift-6.svg?logo=swift&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="Swift 6" src="https://shieldcn.dev/badge/Swift-6.svg?logo=swift&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture>
   <a href="#features"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/conversions-269_routes.svg?logo=lu:Repeat&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="269 conversion routes" src="https://shieldcn.dev/badge/conversions-269_routes.svg?logo=lu:Repeat&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture></a>
   <a href="#features"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/tools-27.svg?logo=lu:Wrench&amp;variant=secondary&amp;size=sm&amp;mode=dark" /><img alt="27 tools" src="https://shieldcn.dev/badge/tools-27.svg?logo=lu:Wrench&amp;variant=secondary&amp;size=sm&amp;mode=light" /></picture></a>
@@ -35,9 +35,9 @@ A macOS menu-bar app: tap a key while dragging a file, and a wheel pops up to co
 
 ## Install
 
-Requires Apple silicon and macOS 13 or later.
+Requires macOS 13 or later, on Apple silicon or Intel.
 
-1. Download the latest `Lime-<version>-arm64.dmg` from [Releases](https://github.com/LumenJSN/Lime/releases/latest) and open it.
+1. Download the latest `Lime-<version>.dmg` from [Releases](https://github.com/LumenJSN/Lime/releases/latest) and open it.
 2. Drag **Lime** onto **Applications**, then eject the disk image.
 3. Open Lime from Applications.
 
@@ -86,9 +86,9 @@ Lime never launches Pages, Keynote, Numbers, Word, PowerPoint or Excel.
 ## Build and test
 
 ```sh
-./Scripts/BuildMediaTools.sh   # once: builds ffmpeg/ffprobe from public sources into Resources/Tools
+./Scripts/BuildMediaTools.sh   # once: builds universal ffmpeg/ffprobe from public sources into Resources/Tools (needs nasm: brew install nasm)
 ./build.sh   # produces ../Lime.app (fetches the pinned Sparkle release into .deps on first run)
-./test.sh    # 349 interaction checks, 269 conversion routes, 55 tool checks
+./test.sh    # 521 interaction checks, 269 conversion routes, 70 tool checks
 ./Scripts/Release.sh   # ad-hoc signed zip and DMG, sources, checksums and a signed appcast item in ../dist/<version>
 ```
 

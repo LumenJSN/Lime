@@ -11,7 +11,7 @@ export RAR_FIXTURE="${RAR_FIXTURE:-$ROOT/Tests/Fixtures/sample.rar}" XLS_FIXTURE
 SOURCES=()
 while IFS= read -r -d '' file; do SOURCES+=("$file"); done < <(find "$ROOT/Sources" -name '*.swift' ! -name Entry.swift -print0 | sort -z)
 for suite in InteractionChecks ConversionMatrixChecks ToolChecks; do
-  swiftc -swift-version 5 -parse-as-library -target arm64-apple-macosx13.0 -module-cache-path "$BUILD/module-cache" \
+  swiftc -swift-version 5 -parse-as-library -target "$(uname -m)-apple-macosx13.0" -module-cache-path "$BUILD/module-cache" \
     "${SOURCES[@]}" "$ROOT/Tests/$suite.swift" -o "$BUILD/$suite" \
     -F "$ROOT/.deps/Sparkle" -framework Sparkle -Xlinker -rpath -Xlinker "$ROOT/.deps/Sparkle" 2>&1 | grep -E 'error' || true
   echo "== $suite"

@@ -1,14 +1,14 @@
-# Validation — Lime 1.0 (2026-10-19)
+# Validation
 
-Apple Swift 6.4 (language mode 5), arm64, macOS 13 deployment target, built on macOS 27.0.1.
+Apple Swift 6.4 (language mode 5), universal (arm64 + x86_64), macOS 13 deployment target, built on macOS 27.0.1. The automated suites were last run on arm64 on 2026-10-23; the live checks below date from Lime 1.0 (2026-10-19).
 
 ## Automated (`./test.sh`)
 
 | Suite | Result | Covers |
 |---|---|---|
-| InteractionChecks | 340/340 | Route count = 269, 27 core tools, 6 actions; per-format and mixed-selection tool lists; wheel geometry (petal 0 at north, clockwise order, hole/outside/gutter dead zones, petal paths); controller hover/commit/cancel/mode switch/keyboard; drag-watcher state machine (stale pasteboard ignored, tap edge trigger, mode switching, mouse-up end, paused monitoring, custom key chords); untrusted content (link/image schemes, package path containment, parser-based EPUB sanitising, ffmpeg input guards) |
+| InteractionChecks | 521/521 | Route count = 269, 27 core tools, 6 actions; per-format and mixed-selection tool lists; wheel geometry (petal 0 at north, clockwise order, hole/outside/gutter dead zones, petal paths); controller hover/commit/cancel/mode switch/keyboard; drag-watcher state machine (stale pasteboard ignored, tap edge trigger, mode switching, mouse-up end, paused monitoring, custom key chords); untrusted content (link/image schemes, package path containment, parser-based EPUB sanitising, ffmpeg input guards); which streams are copied untouched and which clips can be joined without re-encoding; loudness measurement parsing; parallel file limits |
 | ConversionMatrixChecks | 269/269 routes | Every conversion route, with RAR/PPT/XLS samples from `Tests/Fixtures`; outputs decoded (ImageIO, PDFKit, `unzip -t`, IWA text storage for Pages); Pages list numbering check |
-| ToolChecks | 55/55 | All tools with real fixtures, including Copy Text (OCR on an image and an image-only PDF, Korean + English), Remove Background (transparent corners, opaque subject), target-size compression, animated WebP compression (frames kept, resize rejected), metadata write-back, annotations, crops, blur/solid redaction, collage, joins, splits, audio visualizer, channel conversion, bleeps, PDF organizing, QR reading, archive traversal rejection, symlinks removed from document packages, concat lists disguised as video refused |
+| ToolChecks | 70/70 | All tools with real fixtures, including Copy Text (OCR on an image and an image-only PDF, Korean + English), Remove Background (transparent corners, opaque subject), target-size compression, animated WebP compression (frames kept, resize rejected), metadata write-back, annotations, crops, blur/solid redaction, collage, joins, splits, audio visualizer, channel conversion, bleeps, PDF organizing, QR reading, archive traversal rejection, symlinks removed from document packages, concat lists disguised as video refused; joined picture length, including clips with different time units; parallel files (cap, progress, file order, errors, cancelling, shared slots); WebP transparency |
 
 No other application is launched.
 

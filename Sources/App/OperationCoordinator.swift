@@ -58,15 +58,15 @@ final class OperationCoordinator {
         let options = settings.optionsProvider
         let task = Task.detached(priority: .userInitiated) {
             do {
-                let context = try OperationContext(outputDirectory: output, optionsForFormat: options) { value in
-                    Task { @MainActor in
-                        model.fraction = value
-                        model.saved = min(count - 1, Int(value * Double(count)))
-                    }
-                }
+                let context = try OperationContext(outputDirectory: output, optionsForFormat: options, progress: { value in
+                    Task { @MainActor in model.fraction = value }
+                }, filesDone: { done in
+                    Task { @MainActor in model.saved = max(model.saved, min(count - 1, done)) }
+                })
                 let results = try await work(context)
                 await MainActor.run {
                     model.outputs = results
+                    model.elapsed = ProcessInfo.processInfo.systemUptime - model.started
                     model.saved = count
                     model.fraction = 1
                     model.phase = .finished
@@ -119,14 +119,20 @@ final class OperationCoordinator {
         }
     }
 
+    /// Reads codes off the main thread; a many-page PDF takes a while.
     private func readQR(_ files: [URL], at point: NSPoint) {
-        var results: [(URL, [String])] = []
-        for url in files { results.append((url, (try? ImageTools.readQRCodes(url)) ?? [])) }
-        let window = QRResultsWindow.make(results: results)
-        window.setFrameTopLeftPoint(NSPoint(x: point.x - window.frame.width / 2, y: point.y + 40))
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        qrWindows.append(window)
+        activeCount += 1
+        Task.detached(priority: .userInitiated) {
+            let results = files.map { url in (url, (try? ImageTools.readQRCodes(url)) ?? []) }
+            await MainActor.run {
+                self.activeCount -= 1
+                let window = QRResultsWindow.make(results: results)
+                window.setFrameTopLeftPoint(NSPoint(x: point.x - window.frame.width / 2, y: point.y + 40))
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                self.qrWindows.append(window)
+            }
+        }
     }
 
     static func progressTitle(_ tool: LimeTool) -> String {

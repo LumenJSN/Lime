@@ -79,6 +79,8 @@ struct StagedOutput: Sendable {
     let stem: String
     /// Extension without the dot; empty for folders.
     let fileExtension: String
+    /// Position of the source file in the selection, so outputs keep its order.
+    var fileIndex = 0
 }
 
 /// Shared state for one operation: private workspace, options and progress.
@@ -87,29 +89,71 @@ final class OperationContext: @unchecked Sendable {
     let optionsForFormat: @Sendable (String) -> ConvertPrefs
     let outputDirectory: URL?
     private let progressHandler: @Sendable (Double) -> Void
+    private let filesDoneHandler: @Sendable (Int) -> Void
     private let lock = NSLock()
     private var outputs: [StagedOutput] = []
 
     init(outputDirectory: URL?, optionsForFormat: @escaping @Sendable (String) -> ConvertPrefs,
-         progress: @escaping @Sendable (Double) -> Void = { _ in }) throws {
+         progress: @escaping @Sendable (Double) -> Void = { _ in }, filesDone: @escaping @Sendable (Int) -> Void = { _ in }) throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("Lime-" + UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         workspace = root
         self.outputDirectory = outputDirectory
         self.optionsForFormat = optionsForFormat
         progressHandler = progress
+        filesDoneHandler = filesDone
     }
     deinit { try? FileManager.default.removeItem(at: workspace) }
 
-    private var span: ClosedRange<Double> = 0...1
-    /// Share of the overall progress that the current file reports into.
-    var progressSpan: ClosedRange<Double> {
-        get { lock.lock(); defer { lock.unlock() }; return span }
-        set { lock.lock(); span = newValue; lock.unlock() }
+    /// The file a task works on inside `forEach`.
+    @TaskLocal private static var fileIndex: Int?
+    /// Progress of each file in the running `forEach`.
+    private var fileFractions: [Double] = []
+
+    /// Reports progress of the current file; inside `forEach` the overall
+    /// figure is the average over every file, and finished files are counted.
+    func progress(_ value: Double) { report(value, file: Self.fileIndex) }
+
+    /// `progress` bound to the current file, for callbacks on other threads.
+    func reporter() -> @Sendable (Double) -> Void {
+        let index = Self.fileIndex
+        return { [self] value in report(value, file: index) }
     }
-    func progress(_ value: Double) {
-        let s = progressSpan
-        progressHandler(s.lowerBound + (s.upperBound - s.lowerBound) * min(1, max(0, value)))
+
+    private func report(_ value: Double, file index: Int?) {
+        let value = min(1, max(0, value))
+        lock.lock(); defer { lock.unlock() }
+        guard let index, fileFractions.indices.contains(index) else { return progressHandler(value) }
+        fileFractions[index] = max(fileFractions[index], value)
+        progressHandler(fileFractions.reduce(0, +) / Double(fileFractions.count))
+        filesDoneHandler(fileFractions.filter { $0 >= 1 }.count)
+    }
+
+    /// Runs `body` for each file, up to `limit` at a time. A failure stops the
+    /// rest and names its file when there are several; cancelling starts no more.
+    func forEach(_ files: [URL], limit: Int, _ body: @escaping @Sendable (Int, URL) async throws -> Void) async throws {
+        lock.withLock { fileFractions = Array(repeating: 0, count: files.count) }
+        defer { lock.withLock { fileFractions = [] } }
+        func add(_ index: Int, to group: inout ThrowingTaskGroup<Void, Error>) {
+            let file = files[index]
+            group.addTask {
+                try await Self.$fileIndex.withValue(index) {
+                    do { try await WorkSlots.shared.run { try await body(index, file) } }
+                    catch is CancellationError { throw CancellationError() }
+                    catch { throw files.count > 1 ? LimeError("\(file.lastPathComponent): \(error.localizedDescription)") : error }
+                }
+            }
+        }
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            var next = min(max(1, limit), files.count)
+            for index in 0..<next { add(index, to: &group) }
+            while try await group.next() != nil, next < files.count {
+                try Task.checkCancellation()
+                add(next, to: &group)
+                next += 1
+            }
+            try await group.waitForAll()
+        }
     }
 
     /// A unique scratch URL inside the workspace.
@@ -127,7 +171,8 @@ final class OperationContext: @unchecked Sendable {
         let base = stem ?? FormatCatalog.stem(of: source)
         let name = label.map { "\(base) (\($0))" } ?? base
         let staged = scratch(ext.isEmpty ? "" : ext)
-        let record = StagedOutput(staged: staged, directory: outputDirectory ?? source.deletingLastPathComponent(), stem: name, fileExtension: ext)
+        let record = StagedOutput(staged: staged, directory: outputDirectory ?? source.deletingLastPathComponent(), stem: name, fileExtension: ext,
+                                  fileIndex: Self.fileIndex ?? 0)
         lock.lock(); outputs.append(record); lock.unlock()
         return staged
     }
@@ -136,7 +181,12 @@ final class OperationContext: @unchecked Sendable {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
         return url
     }
-    var stagedOutputs: [StagedOutput] { lock.lock(); defer { lock.unlock() }; return outputs }
+    /// Gives up a reserved output that will not be written after all.
+    func discard(_ staged: URL) { lock.lock(); outputs.removeAll { $0.staged == staged }; lock.unlock() }
+    var stagedOutputs: [StagedOutput] {
+        lock.lock(); defer { lock.unlock() }
+        return outputs.enumerated().sorted { ($0.element.fileIndex, $0.offset) < ($1.element.fileIndex, $1.offset) }.map(\.element)
+    }
 }
 
 enum OutputPublisher {
@@ -210,13 +260,17 @@ enum ProcessRunner {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 process.terminationHandler = { _ in continuation.resume() }
-                do { try process.run() } catch {
+                do {
+                    try process.run()
+                    // Cancelled just before launch: the handler below found nothing running.
+                    if Task.isCancelled { stop(process) }
+                } catch {
                     process.terminationHandler = nil
                     continuation.resume(throwing: error)
                 }
             }
         } onCancel: {
-            if process.isRunning { process.terminate() }
+            stop(process)
         }
         outPipe.fileHandleForReading.readabilityHandler = nil
         errPipe.fileHandleForReading.readabilityHandler = nil
@@ -230,6 +284,17 @@ enum ProcessRunner {
             throw LimeError(detail.isEmpty ? "The encoder stopped with an error." : String(detail.suffix(900)))
         }
         return Result(stdout: collector.out, stderr: stderr)
+    }
+
+    /// Asks the tool to quit, then forces it after a moment. ffmpeg first
+    /// finishes the frames in hand, about a second for 4K, and a cancelled
+    /// job's files are thrown away anyway.
+    private static func stop(_ process: Process) {
+        guard process.isRunning else { return }
+        process.terminate()
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) {
+            if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+        }
     }
 
     private final class OutputCollector: @unchecked Sendable {
