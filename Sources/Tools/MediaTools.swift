@@ -227,18 +227,21 @@ enum MediaTools {
     /// Returns false when ffmpeg won't copy the pictures, or the result
     /// doesn't run as long as the clips, so the caller re-encodes instead.
     private static func joinCopying(_ clips: [URL], infos: [MediaProbe], context: OperationContext) async throws -> Bool {
+        // A line break in a name would start a new line in the list.
+        guard !clips.contains(where: { $0.path.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) }) else { return false }
         let lengths = pictureSpans(infos).map(\.length)
         let list = context.scratch("txt")
+        // Each clip may only be opened as a media file, never as another list.
         let lines = clips.indices.map { i in
-            "file '" + clips[i].path.replacingOccurrences(of: "'", with: "'\\''") + "'\ninpoint " + seconds(infos[i].videoStart)
-                + "\nduration " + seconds(lengths[i])
+            "file '" + clips[i].path.replacingOccurrences(of: "'", with: "'\\''") + "'\noption format_whitelist " + FFmpeg.inputFormats
+                + "\ninpoint " + seconds(infos[i].videoStart) + "\nduration " + seconds(lengths[i])
         }
-        try lines.joined(separator: "\n").appending("\n").write(to: list, atomically: true, encoding: .utf8)
+        try (["ffconcat version 1.0"] + lines).joined(separator: "\n").appending("\n").write(to: list, atomically: true, encoding: .utf8)
         let out = context.output(for: clips[0], label: "joined", ext: "mp4")
-        // The concat demuxer hands these allow-lists on to every clip it opens.
+        // Only the list itself is read as concat; the clips get their own allow-list above.
         // Without -copyts ffmpeg would also move the picture by the first
         // clip's sound start, which the concat demuxer reports as its own.
-        var args = ["-copyts", "-protocol_whitelist", "file,pipe", "-format_whitelist", FFmpeg.inputFormats + ",concat",
+        var args = ["-copyts", "-protocol_whitelist", "file,pipe", "-format_whitelist", "concat",
                     "-f", "concat", "-safe", "0", "-i", list.path]
         if infos[0].hasAudio {
             args += clips.flatMap { FFmpeg.inputGuards + ["-i", $0.path] }

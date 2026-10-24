@@ -130,6 +130,11 @@ enum ToolChecks {
             try await FFmpeg.run(["-i", mp4b.path, "-c", "copy", "-video_track_timescale", "600", ticks.path], duration: 0, context: nil)
             let mixedJoin = await joinedLength([mp4, ticks])
             expect(abs(mixedJoin - 4) < 0.1, "clips in other time units join at the right length (\(mixedJoin) s)")
+            // A line break in a name must not reach ffmpeg's list of clips as a new line.
+            let oddName = root.appendingPathComponent("line\nfile 'clip.mp4'.mp4")
+            try fm.copyItem(at: mp4b, to: oddName)
+            let oddJoin = await joinedLength([mp4, oddName])
+            expect(abs(oddJoin - 4) < 0.1, "a clip with a line break in its name joins at the right length (\(oddJoin) s)")
             await check("snapshot one", .grabFrames, [mp4]) { $0.frameGrabTimes = [0.5] }
             await check("snapshots", .grabFrames, [mp4]) { $0.frameGrabTimes = [0.2, 1.0, 1.5] }
             await check("split clips", .sliceVideo, [mp4]) { $0.sliceTimes = [0.7, 1.4] }
