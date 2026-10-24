@@ -12,6 +12,13 @@ struct IntroView: View {
     var close: () -> Void
     var minimize: () -> Void
 
+    init(settings: AppSettings, startAt page: Page = .welcome, close: @escaping () -> Void, minimize: @escaping () -> Void) {
+        self.settings = settings
+        _page = State(initialValue: page)
+        self.close = close
+        self.minimize = minimize
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {

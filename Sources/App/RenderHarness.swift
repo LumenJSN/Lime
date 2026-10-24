@@ -35,6 +35,7 @@ enum RenderHarness {
             jobs.append(("settings-\(tab.rawValue.lowercased())", AnyView(SettingsTabHost(settings: settings, tab: tab)), CGSize(width: 456, height: 560), 0.4))
         }
         jobs.append(("welcome", AnyView(IntroView(settings: settings, close: {}, minimize: {})), CGSize(width: 560, height: 520), 0.4))
+        jobs.append(("welcome-ready", AnyView(IntroView(settings: settings, startAt: .ready, close: {}, minimize: {})), CGSize(width: 560, height: 520), 0.4))
         let progress = OperationProgressModel(title: "Converting to MP3", total: 1)
         progress.fraction = 0.6
         jobs.append(("progress", AnyView(OperationProgressView(model: progress)), CGSize(width: 290, height: 80), 0.3))
