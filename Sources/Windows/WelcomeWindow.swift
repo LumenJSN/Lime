@@ -156,6 +156,7 @@ struct IntroView: View {
             Text("Lime is ready").font(.system(size: 24, weight: .bold, design: .rounded))
             Text("Find the Lime icon near the clock in your menu bar.").font(.system(size: 13)).foregroundStyle(.secondary)
             primary("Done") { settings.welcomeCompleted = true; close() }
+            StarButton().padding(.top, 4)
         }
     }
 }

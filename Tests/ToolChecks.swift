@@ -285,6 +285,43 @@ enum ToolChecks {
                 let freed = try await single.run { true }
                 expect(cancelled && freed, "a waiting job can be cancelled and slots come back")
             }
+            // The star button stars through a signed-in gh and opens GitHub otherwise.
+            do {
+                let suite = "LimeStarChecks-" + UUID().uuidString
+                let store = UserDefaults(suiteName: suite)!
+                defer { store.removePersistentDomain(forName: suite) }
+                let log = root.appendingPathComponent("gh-args.txt")
+                func fakeGH(_ name: String, exit code: Int) throws -> String {
+                    let script = root.appendingPathComponent(name)
+                    try "#!/bin/sh\nprintf '%s ' \"$@\" > '\(log.path)'\nexit \(code)\n".write(to: script, atomically: true, encoding: .utf8)
+                    try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+                    return script.path
+                }
+                let good = try fakeGH("gh-good", exit: 0), bad = try fakeGH("gh-bad", exit: 1)
+                let plain = root.appendingPathComponent("gh-plain")
+                try "".write(to: plain, atomically: true, encoding: .utf8)
+                expect(GitHubStar.cli(in: [root.appendingPathComponent("none").path, plain.path, good])?.path == good, "star finds an executable gh")
+                var opened: [URL] = []
+                let star = await GitHubStar(defaults: store, locations: [good], openPage: { opened.append($0) })
+                await star.star()
+                let args = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
+                let starredState = await star.state
+                expect(starredState == .starred && opened.isEmpty && args == "api --method PUT user/starred/LumenJSN/Lime --silent " && store.bool(forKey: "starredOnGitHub"),
+                       "star with signed-in gh stars without opening the browser (\(args))")
+                let again = await GitHubStar(defaults: store, locations: [], openPage: { opened.append($0) })
+                let rememberedState = await again.state
+                await again.star()
+                expect(rememberedState == .starred && opened.isEmpty, "a given star is remembered")
+                store.removeObject(forKey: "starredOnGitHub")
+                let failing = await GitHubStar(defaults: store, locations: [bad], openPage: { opened.append($0) })
+                await failing.star()
+                let failingState = await failing.state
+                let missing = await GitHubStar(defaults: store, locations: [], openPage: { opened.append($0) })
+                await missing.star()
+                let missingState = await missing.state
+                expect(failingState == .openedPage && missingState == .openedPage && opened == [GitHubStar.page, GitHubStar.page] && !store.bool(forKey: "starredOnGitHub"),
+                       "star without gh, or when it fails, opens GitHub instead")
+            }
             expect(LimeTool.extraTools(for: ["png"]).contains(.copyText) && LimeTool.extraTools(for: ["pdf", "jpg"]) == [.copyText] && LimeTool.extraTools(for: ["mp3"]).isEmpty, "extra tool rules")
             if BackgroundRemoval.isAvailable {
                 let subject = root.appendingPathComponent("subject.jpg")

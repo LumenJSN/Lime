@@ -161,6 +161,7 @@ struct AboutSettings: View {
             Text("Lime").font(.system(size: 17, weight: .semibold)).padding(.top, 14)
             Text(version).font(.system(size: 13)).foregroundStyle(.secondary).padding(.top, 10)
             Text("Unlimited uses").font(.system(size: 13)).foregroundStyle(.secondary).padding(.top, 22)
+            StarButton().padding(.top, 18)
             Button("Licenses") {
                 if let url = Bundle.main.resourceURL?.appendingPathComponent("Licenses") { NSWorkspace.shared.open(url) }
             }
