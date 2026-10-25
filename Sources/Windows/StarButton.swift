@@ -19,11 +19,10 @@ struct StarButton: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(starred ? Color(nsColor: Brand.accentDeep) : Color.primary)
                 .padding(.horizontal, 12).padding(.vertical, 5)
-                .background(Capsule().fill(starred ? Color(nsColor: Brand.accent).opacity(0.14) : Color(nsColor: .controlBackgroundColor)))
-                .overlay(Capsule().strokeBorder(starred ? Color(nsColor: Brand.accent).opacity(0.45) : Color.primary.opacity(0.12)))
+                .background(Capsule().fill(starred ? Color(nsColor: Brand.accent).opacity(0.16) : Color.primary.opacity(0.07)))
+                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .help(starred ? "Thanks for starring Lime" : "Star Lime on GitHub")
+            .buttonStyle(PillPress())
             Text(hint).font(.system(size: 11)).foregroundStyle(.secondary).frame(height: 14)
         }
     }
@@ -44,5 +43,12 @@ struct StarButton: View {
         case .starred: "Thanks for the star."
         case .idle, .starring: ""
         }
+    }
+}
+
+/// Dims the pill while pressed and draws nothing else around it.
+private struct PillPress: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
